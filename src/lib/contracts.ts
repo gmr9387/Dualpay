@@ -106,7 +106,7 @@ export async function createDispute(
   });
   // Lineage event — dispute_created step in recovery chain.
   await appendLineageEvent({
-    org_id: (data as any).org_id ?? null,
+    org_id: (data as UnderpaymentDispute).org_id ?? null,
     claim_id: input.claim_id ?? null,
     event_type: 'dispute_created',
     event_summary: `Dispute opened: ${input.payer_name} variance ${(input.variance_percent).toFixed(1)}%`,

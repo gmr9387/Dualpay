@@ -113,8 +113,10 @@ export async function upsertOutcome(o: RecoveryOutcome): Promise<void> {
     .upsert(row as never, { onConflict: 'outcome_id' });
   if (error) { console.error('[outcomes] upsert failed', error.message); return; }
   // Lineage event — outcome_recorded step in recovery chain.
+  // org_id is null here; the trg_lineage_events_org trigger fills it from
+  // set_default_org_id() on the server side (RecoveryOutcome has no org_id field).
   await appendLineageEvent({
-    org_id: (row as any).org_id ?? null,
+    org_id: null,
     claim_id: o.claim_id ?? null,
     outcome_id: o.outcome_id ?? null,
     event_type: 'outcome_recorded',

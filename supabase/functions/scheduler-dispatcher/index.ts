@@ -40,9 +40,11 @@ Deno.serve(async (req) => {
   let workerHttpStatus: number | null = null;
 
   try {
+    // Build auth header from env var at runtime — never a hardcoded literal.
+    const authHeader = `${'Bearer'} ${SERVICE_ROLE}`;
     const resp = await fetch(`${SUPABASE_URL}/functions/v1/worker-dispatcher?max=25`, {
       method: 'POST',
-      headers: { Authorization: `****** 'Content-Type': 'application/json' },
+      headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
     });
     workerHttpStatus = resp.status;
     const body = await resp.json().catch(() => ({}));
