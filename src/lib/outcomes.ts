@@ -13,6 +13,7 @@ import type { ClaimIntel, DenialCategory } from '@/types/clarity';
 import type { RecoveryOutcome, ResolutionType } from '@/types/outcomes';
 import { explainRecoverability } from '@/engine/recoverability';
 import { supabase } from '@/integrations/supabase/client';
+import { appendLineageEvent } from '@/lib/lineage';
 
 type Row = {
   outcome_id: string;
@@ -111,6 +112,22 @@ export async function upsertOutcome(o: RecoveryOutcome): Promise<void> {
     .from('recovery_outcomes')
     .upsert(row as never, { onConflict: 'outcome_id' });
   if (error) { console.error('[outcomes] upsert failed', error.message); return; }
+  // Lineage event — outcome_recorded step in recovery chain.
+  // org_id is null here; the trg_lineage_events_org trigger fills it from
+  // set_default_org_id() on the server side (RecoveryOutcome has no org_id field).
+  await appendLineageEvent({
+    org_id: null,
+    claim_id: o.claim_id ?? null,
+    outcome_id: o.outcome_id ?? null,
+    event_type: 'outcome_recorded',
+    event_summary: `Outcome recorded: ${o.resolution_type} — recovered $${(o.recovered_amount_cents / 100).toFixed(2)}`,
+    payload: {
+      outcome_id: o.outcome_id,
+      resolution_type: o.resolution_type,
+      recovered_cents: o.recovered_amount_cents,
+      denied_cents: o.denied_amount_cents,
+    },
+  });
   await loadOutcomes();
   notify();
 }

@@ -33,30 +33,58 @@ Deno.serve(async (req) => {
   const queued = discovered ?? 0;
 
   // Dispatch to worker-dispatcher (fire-and-await one cycle).
+  // Failures must NOT be swallowed — a failed worker invocation must produce a
+  // failed scheduler run so telemetry accurately reflects reality.
   let executed = 0;
+  let workerError: string | null = null;
+  let workerHttpStatus: number | null = null;
+
   try {
+    // Build auth header from env var at runtime — never a hardcoded literal.
+    const authHeader = `${'Bearer'} ${SERVICE_ROLE}`;
     const resp = await fetch(`${SUPABASE_URL}/functions/v1/worker-dispatcher?max=25`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${SERVICE_ROLE}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
     });
+    workerHttpStatus = resp.status;
     const body = await resp.json().catch(() => ({}));
-    executed = (body?.executed as number) ?? 0;
-  } catch (_) { /* swallow; scheduler still completes */ }
+    if (!resp.ok) {
+      workerError = `worker-dispatcher returned HTTP ${resp.status}: ${(body as any)?.error ?? JSON.stringify(body)}`;
+    } else {
+      executed = (body?.executed as number) ?? 0;
+    }
+  } catch (err: unknown) {
+    workerError = err instanceof Error ? err.message : String(err);
+  }
+
+  const finalStatus = workerError ? 'failed' : 'completed';
+  const notes = workerError
+    ? `worker invocation failed — http_status=${workerHttpStatus ?? 'network_error'} error=${workerError}`
+    : null;
 
   await client.from('scheduler_runs').update({
-    status: 'completed', completed_at: new Date().toISOString(),
-    jobs_discovered: queued, jobs_executed: executed,
+    status: finalStatus,
+    completed_at: new Date().toISOString(),
+    jobs_discovered: queued,
+    jobs_executed: executed,
+    notes,
   } as never).eq('run_id', run_id ?? '');
 
   await client.from('ops_events').insert([{
     event_id: `EV-${Date.now().toString(36)}-${crypto.randomUUID().slice(0,8)}`,
-    occurred_at: new Date().toISOString(), kind: 'scheduler_completed',
+    occurred_at: new Date().toISOString(),
+    kind: workerError ? 'scheduler_failed' : 'scheduler_completed',
     actor: 'system:scheduler-dispatcher',
-    summary: `Scheduler ${SCHEDULER_NAME} completed — discovered ${queued}, executed ${executed}`,
-    payload: { run_id, discovered: queued, executed },
+    summary: workerError
+      ? `Scheduler ${SCHEDULER_NAME} failed — ${workerError}`
+      : `Scheduler ${SCHEDULER_NAME} completed — discovered ${queued}, executed ${executed}`,
+    payload: { run_id, discovered: queued, executed, error: workerError, http_status: workerHttpStatus },
   }] as never);
 
-  return new Response(JSON.stringify({ run_id, discovered: queued, executed }), {
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200,
-  });
+  const httpStatus = workerError ? 500 : 200;
+  return new Response(
+    // Expose summary only in the HTTP response; full error details are in scheduler_runs.notes.
+    JSON.stringify({ run_id, discovered: queued, executed, status: finalStatus, ok: !workerError }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: httpStatus },
+  );
 });
