@@ -83,7 +83,8 @@ Deno.serve(async (req) => {
 
   const httpStatus = workerError ? 500 : 200;
   return new Response(
-    JSON.stringify({ run_id, discovered: queued, executed, error: workerError, status: finalStatus }),
+    // Expose summary only in the HTTP response; full error details are in scheduler_runs.notes.
+    JSON.stringify({ run_id, discovered: queued, executed, status: finalStatus, ok: !workerError }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: httpStatus },
   );
 });
