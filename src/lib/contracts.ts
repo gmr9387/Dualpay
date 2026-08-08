@@ -5,6 +5,7 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import { appendOpsEvent } from '@/lib/ops-events';
+import { appendLineageEvent } from '@/lib/lineage';
 import type {
   PayerContract, FeeScheduleRow, UnderpaymentDispute,
 } from '@/types/contracts';
@@ -102,6 +103,14 @@ export async function createDispute(
       variance_cents: input.variance_amount_cents,
       severity: input.severity,
     },
+  });
+  // Lineage event — dispute_created step in recovery chain.
+  await appendLineageEvent({
+    org_id: (data as any).org_id ?? null,
+    claim_id: input.claim_id ?? null,
+    event_type: 'dispute_created',
+    event_summary: `Dispute opened: ${input.payer_name} variance ${(input.variance_percent).toFixed(1)}%`,
+    payload: { dispute_id: data.dispute_id, variance_cents: input.variance_amount_cents, severity: input.severity },
   });
   return data as UnderpaymentDispute;
 }
