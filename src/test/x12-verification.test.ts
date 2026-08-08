@@ -283,9 +283,7 @@ describe('X12 Normalizer — normalize837 → CanonicalClaim837', () => {
   it('identifies 837P form_type correctly', () => {
     const parsed = parseX12(FIXTURE_837P);
     const claims = normalize837(parsed);
-    const hasProfessional = claims.some(c => c.form_type === '837P');
-    // Parser may classify via GS08; confirm at least one professional or unknown
-    expect(hasProfessional || claims[0].form_type === '837P' || claims.length > 0).toBe(true);
+    expect(claims.some(c => c.form_type === '837P')).toBe(true);
   });
 
   it('produces at least one canonical claim from a valid 837I', () => {
