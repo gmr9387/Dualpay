@@ -22,13 +22,19 @@ Object.defineProperty(window, "matchMedia", {
 // that exercise the full persistence stack (upsert → select, insert → query,
 // etc.) can pass without a live Supabase instance.
 //
-// The mock is reset between test runs automatically because each `vi.mock`
-// factory is called fresh per test file.
+// Cross-file isolation: vitest runs each test file in its own worker (separate
+// module registry), so `_db` is never shared across test files — no cleanup
+// hook is needed between files.
+//
+// Within-file isolation: the `_db` map persists across describe() blocks so
+// tests that intentionally build up state (e.g. insert then query) work
+// correctly. Tests that need a clean slate should call `_db.clear()` in their
+// own `beforeEach`.
 // ---------------------------------------------------------------------------
 
 type Row = Record<string, unknown>;
 
-/** Shared in-memory store that survives across describe() blocks within a file. */
+/** In-memory store — isolated per test file by vitest's module worker boundary. */
 const _db = new Map<string, Row[]>();
 
 function _getTable(name: string): Row[] {
@@ -82,12 +88,13 @@ class MockQueryBuilder {
   or(_query: string) { return this; }
   count(_col?: string, _opts?: unknown) { return this; }
 
-  // ── Write operations ────────────────────────────────────────────────────
+  // ── Write operations — always return `this` so callers can chain
+  // .select().single()/.maybeSingle() or simply await the builder directly.
+  // ─────────────────────────────────────────────────────────────────────────
   insert(rows: Row | Row[]) {
     const arr = Array.isArray(rows) ? rows : [rows];
-    _getTable(this._table).push(...arr);
-    if (this._hasSelect) return this; // allow .insert([]).select().single() chain
-    return Promise.resolve({ data: arr, error: null, count: arr.length });
+    this._pendingWrite = { kind: "insert", rows: arr };
+    return this;
   }
 
   upsert(rows: Row | Row[], opts?: { onConflict?: string }) {
