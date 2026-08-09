@@ -9,6 +9,7 @@
  * using the existing remittance normalizer + classifier — no new
  * scoring logic.
  */
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type {
   ImportBatch,
@@ -17,10 +18,12 @@ import type {
 } from '@/types/import';
 import { normalizeRemittance } from '@/engine/remittance-normalizer';
 import { classifyRemittance } from '@/engine/remittance-denial-extractor';
+const sb = supabase as ReturnType<typeof createClient>;
+
 
 export const REMITTANCE_BATCH_EVENT = 'clarity-remittance-batches';
 
-function fromRow(r: any): RemittanceBatchSummary {
+function fromRow(r: Record<string, unknown>): RemittanceBatchSummary {
   return {
     batch_id: r.batch_id,
     file_name: r.file_name,
@@ -39,7 +42,7 @@ function fromRow(r: any): RemittanceBatchSummary {
 }
 
 export async function listRemittanceBatches(): Promise<RemittanceBatchSummary[]> {
-  const { data, error } = await (supabase as any)
+  const { data, error } = await sb
     .from('remittance_batches')
     .select('*')
     .order('uploaded_at', { ascending: false });
@@ -92,7 +95,7 @@ export async function persistRemittanceBatch(
     imported_by: batch.uploaded_by,
   };
 
-  const { error } = await (supabase as any)
+  const { error } = await sb
     .from('remittance_batches')
     .insert([payload]);
   if (error) {

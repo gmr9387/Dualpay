@@ -304,7 +304,7 @@ export default function AppealPacket() {
 
 function PacketPicker({ claims }: { claims: Array<{ claim_id: string; intel: { payer_name: string; amount_at_risk_cents: number; denial_events: { length: number }[] | { length: number } } }> }) {
   // Pull claims with at least one denial event
-  const list = useMemo(() => (claims as any[]).filter(c => c.intel.denial_events.length > 0)
+  const list = useMemo(() => claims.filter(c => c.intel.denial_events.length > 0)
     .sort((a, b) => b.intel.amount_at_risk_cents - a.intel.amount_at_risk_cents).slice(0, 30), [claims]);
   return (
     <div className="flex flex-col h-full">
@@ -319,7 +319,7 @@ function PacketPicker({ claims }: { claims: Array<{ claim_id: string; intel: { p
                 <div className="grid grid-cols-[110px_1fr_140px_60px] gap-3 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/40">
                   <span>Claim</span><span>Payer</span><span className="text-right">At Risk</span><span></span>
                 </div>
-                {list.map((c: any) => (
+                {list.map((c) => (
                   <Link key={c.claim_id} to={`/packet/${c.claim_id}`} className="grid grid-cols-[110px_1fr_140px_60px] gap-3 items-center px-4 py-2.5 hover:bg-muted/40 text-[12.5px]">
                     <span className="font-mono font-semibold text-foreground">{c.claim_id}</span>
                     <span className="text-foreground truncate">{c.intel.payer_name}</span>

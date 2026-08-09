@@ -5,9 +5,10 @@
  * heartbeat, lifetime throughput.  Writes happen server-side from the
  * worker-dispatcher edge function.
  */
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-const sb = supabase as any;
+const sb = supabase as ReturnType<typeof createClient>;
 
 export interface WorkerRow {
   worker_id: string;

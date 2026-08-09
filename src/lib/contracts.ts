@@ -3,6 +3,7 @@
  * Versioned CRUD for payer_contracts + fee_schedules + underpayment_disputes.
  * Never overwrites: new version creates a new contract row.
  */
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { appendOpsEvent } from '@/lib/ops-events';
 import { appendLineageEvent } from '@/lib/lineage';
@@ -10,7 +11,7 @@ import type {
   PayerContract, FeeScheduleRow, UnderpaymentDispute,
 } from '@/types/contracts';
 
-const sb = supabase as any;
+const sb = supabase as ReturnType<typeof createClient>;
 
 export const CONTRACT_EVENT = 'clarity-contracts';
 
@@ -56,7 +57,7 @@ export async function createContract(input: {
   const { data, error } = await sb.from('payer_contracts').insert([row]).select('*').single();
   if (error || !data) { console.error('[contracts] create failed', error?.message); return null; }
   await appendOpsEvent({
-    kind: 'contract_uploaded' as any,
+    kind: 'contract_uploaded',
     summary: `Contract uploaded: ${input.payer_name} — ${input.contract_name} v${nextVersion}`,
     payload: { contract_id: data.contract_id, version: nextVersion },
   });
@@ -73,7 +74,7 @@ export async function addFeeScheduleRows(
   const { error, data } = await sb.from('fee_schedules').insert(payload).select('fee_schedule_id');
   if (error) { console.error('[contracts] fees insert failed', error.message); return 0; }
   await appendOpsEvent({
-    kind: 'contract_version_created' as any,
+    kind: 'contract_version_created',
     summary: `Fee schedule loaded: ${rows.length} lines for contract ${contract_id}`,
     payload: { contract_id, row_count: rows.length },
   });
@@ -95,7 +96,7 @@ export async function createDispute(
   const { data, error } = await sb.from('underpayment_disputes').insert([input]).select('*').single();
   if (error || !data) { console.error('[disputes] create failed', error?.message); return null; }
   await appendOpsEvent({
-    kind: 'dispute_created' as any,
+    kind: 'dispute_created',
     claim_id: input.claim_id,
     summary: `Underpayment dispute opened: ${input.payer_name} variance ${(input.variance_percent).toFixed(1)}%`,
     payload: {

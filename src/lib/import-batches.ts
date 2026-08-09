@@ -1,6 +1,7 @@
 /**
  * Recovery Factory — Import batch persistence (Lovable Cloud).
  */
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { ImportBatch, ImportSourceType, FieldMapping, ValidationSummary, ParsedRow } from '@/types/import';
 import { rowToClaim } from '@/engine/import-to-claim';
@@ -12,18 +13,20 @@ import { getCurrentOrgId } from '@/lib/current-org';
 import { normalizeRemittance } from '@/engine/remittance-normalizer';
 import { classifyRemittance } from '@/engine/remittance-denial-extractor';
 import {
+
   insertRemittanceLines,
   insertClaimSourceLinks,
   appendLineageEvents,
   type InsertRemittanceLine,
 } from '@/lib/lineage';
+const sb = supabase as ReturnType<typeof createClient>;
 
 type Json = string | number | boolean | null | { [k: string]: Json } | Json[];
 const J = <T>(v: T) => v as unknown as Json;
 
 const EVENT = 'clarity-import-batches';
 
-function fromRow(r: any): ImportBatch {
+function fromRow(r: Record<string, unknown>): ImportBatch {
   return {
     batch_id: r.batch_id,
     file_name: r.file_name,
@@ -45,7 +48,7 @@ function fromRow(r: any): ImportBatch {
 }
 
 export async function listBatches(): Promise<ImportBatch[]> {
-  const { data, error } = await (supabase as any)
+  const { data, error } = await sb
     .from('import_batches')
     .select('*')
     .order('uploaded_at', { ascending: false });
@@ -71,7 +74,7 @@ export async function createBatch(args: {
     mapping: J(args.mapping),
     validation: J(args.validation),
   };
-  const { data, error } = await (supabase as any)
+  const { data, error } = await sb
     .from('import_batches')
     .insert([payload])
     .select('*')
@@ -202,15 +205,14 @@ export async function commitBatch(
     try {
       const orgId = await getCurrentOrgId();
       if (orgId) {
-        const { created } = await reconcileRemittanceOutcomes(batch, rowClaimPairs, orgId);
-        if (created > 0) console.warn(`[reconcile] auto-created ${created} outcome(s)`);
+        await reconcileRemittanceOutcomes(batch, rowClaimPairs, orgId);
       }
     } catch (e) {
       console.error('[import-batches] reconcileRemittanceOutcomes failed', e);
     }
   }
 
-  const { error } = await (supabase as any)
+  const { error } = await sb
     .from('import_batches')
     .update({
       status: 'committed',

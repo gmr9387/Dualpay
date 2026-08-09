@@ -6,6 +6,7 @@ import { archiveFailure, inspectFailure, reviveDeadLetter } from '@/engine/dead-
 import { retryJob } from '@/engine/retry-engine';
 import { useOrg } from '@/hooks/use-org';
 import { roleAtLeast } from '@/lib/role-permissions';
+import type { QueueJob, JobFailure } from '@/types/platform';
 
 export default function PlatformFailures() {
   const { failures, reload } = useJobFailures(false);
@@ -13,7 +14,7 @@ export default function PlatformFailures() {
   const canRetry = roleAtLeast(currentOrg?.role, 'manager');
   const canArchive = roleAtLeast(currentOrg?.role, 'admin');
   const [inspecting, setInspecting] = useState<string | null>(null);
-  const [inspected, setInspected] = useState<any>(null);
+  const [inspected, setInspected] = useState<{ job: QueueJob | null; failures: JobFailure[] } | null>(null);
 
   const onInspect = async (id: string) => {
     setInspecting(id);

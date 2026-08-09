@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { listWorkers, type WorkerRow } from '@/lib/worker-heartbeat';
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-const sb = supabase as any;
+const sb = supabase as ReturnType<typeof createClient>;
 
 export function useWorkers(refreshMs = 15000) {
   const [workers, setWorkers] = useState<WorkerRow[]>([]);

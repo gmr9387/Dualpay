@@ -383,7 +383,6 @@ function NotesPanel({
       .then(n => { if (alive) setNotes(n); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [claimId, orgId, busy]);
 
   return (

@@ -2,13 +2,14 @@
  * Phase 16 — Automation persistence layer.
  * CRUD for automation_jobs + automation_rules.  Reuses appendOpsEvent for audit.
  */
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { appendOpsEvent } from '@/lib/ops-events';
 import type {
   AutomationJob, AutomationRule, JobStatus, JobType, JobRunResult, RuleTriggerType,
 } from '@/types/automation';
 
-const sb = supabase as any;
+const sb = supabase as ReturnType<typeof createClient>;
 
 export const AUTOMATION_EVENT = 'clarity-automation';
 function notify() { window.dispatchEvent(new Event(AUTOMATION_EVENT)); }

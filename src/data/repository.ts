@@ -369,7 +369,7 @@ export async function listLedgerEventsPersistent(): Promise<ReplayLedgerEvent[]>
     .select('*')
     .order('timestamp', { ascending: true });
   if (error) throw error;
-  return (data ?? []).map((row: any) => ({
+  return (data ?? []).map((row: Record<string, unknown>) => ({
     event_id: row.event_id,
     type: row.type as ReplayLedgerEvent['type'],
     claim_id: row.claim_id,
@@ -395,7 +395,7 @@ export async function listLedgerEventsForClaimPersistent(
     .eq('claim_id', claimId)
     .order('timestamp', { ascending: true });
   if (error) throw error;
-  return (data ?? []).map((row: any) => ({
+  return (data ?? []).map((row: Record<string, unknown>) => ({
     event_id: row.event_id,
     type: row.type as ReplayLedgerEvent['type'],
     claim_id: row.claim_id,

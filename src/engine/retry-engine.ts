@@ -5,12 +5,13 @@
  * scheduled for retry or already dead-lettered).  Resets attempts when the
  * caller asks for a clean retry; otherwise preserves attempt history.
  */
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { appendOpsEvent } from '@/lib/ops-events';
 import { QUEUE_EVENT } from './queue-manager';
 import type { QueueJob } from '@/types/platform';
 
-const sb = supabase as any;
+const sb = supabase as ReturnType<typeof createClient>;
 const notify = () => window.dispatchEvent(new Event(QUEUE_EVENT));
 
 export interface RetryOptions {
