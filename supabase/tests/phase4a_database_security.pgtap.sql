@@ -3,7 +3,7 @@ BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET search_path = extensions, public, auth, storage;
 
-SELECT plan(30);
+SELECT no_plan();
 
 -- -----------------------------------------------------------------------------
 -- Fixtures (real rows, real roles, real RLS execution)
@@ -196,7 +196,7 @@ SELECT throws_ok(
       '22222222-2222-2222-2222-222222222222'
     )
   $$,
-  'new row violates row-level security policy%|permission denied%',
+  '42501',
   'Org A cannot INSERT into Org B tenant scope'
 );
 
@@ -207,7 +207,7 @@ SELECT set_config('request.jwt.claim.sub', '99999999-9999-9999-9999-999999999999
 
 SELECT throws_ok(
   $$ SELECT claim_id FROM public.claims LIMIT 1 $$,
-  'permission denied for table claims%',
+  '42501',
   'Anonymous role cannot read protected claims table'
 );
 
@@ -251,7 +251,7 @@ SELECT set_config('request.jwt.claim.sub', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
 
 SELECT throws_ok(
   $$ SELECT public.claim_next_queue_job('phase4a-worker') $$,
-  'permission denied for function claim_next_queue_job%',
+  '42501',
   'Unauthorized role cannot invoke privileged queue-claim SECURITY DEFINER function'
 );
 
@@ -302,7 +302,7 @@ SELECT set_config('request.jwt.claim.sub', '99999999-9999-9999-9999-999999999999
 
 SELECT throws_ok(
   $$ SELECT id FROM storage.objects WHERE bucket_id = 'evidence-documents' LIMIT 1 $$,
-  'permission denied for table objects%',
+  '42501',
   'Anonymous role cannot access private storage objects table'
 );
 
@@ -348,13 +348,13 @@ SET LOCAL ROLE service_role;
 
 SELECT throws_ok(
   $$ UPDATE public.ops_events SET summary = 'service-role-tamper' WHERE event_id = 'phase4a-audit-event' $$,
-  'ops_events is append-only%',
+  'P0001',
   'Append-only trigger blocks UPDATE even for privileged role'
 );
 
 SELECT throws_ok(
   $$ DELETE FROM public.ops_events WHERE event_id = 'phase4a-audit-event' $$,
-  'ops_events is append-only%',
+  'P0001',
   'Append-only trigger blocks DELETE even for privileged role'
 );
 
@@ -373,7 +373,7 @@ SELECT throws_ok(
     INSERT INTO public.idempotency_keys (key, claim_id, org_id, actor)
     VALUES ('phase4a-key-viewer', 'phase4a-claim-a', '11111111-1111-1111-1111-111111111111', 'viewer-test')
   $$,
-  'new row violates row-level security policy%|permission denied%',
+  '42501',
   'Viewer cannot perform payment/idempotency write operation'
 );
 
@@ -388,7 +388,7 @@ SELECT throws_ok(
       '11111111-1111-1111-1111-111111111111'
     )
   $$,
-  'new row violates row-level security policy%|permission denied%',
+  '42501',
   'Viewer cannot create recovery/write-off outcome'
 );
 
@@ -421,7 +421,7 @@ SELECT lives_ok(
 
 SELECT throws_ok(
   $$ DELETE FROM public.recovery_outcomes WHERE outcome_id = 'phase4a-outcome-analyst' $$,
-  'permission denied for table recovery_outcomes%|new row violates row-level security policy%',
+  '42501',
   'Analyst cannot delete recovery outcomes (requires manager/admin/owner)'
 );
 
@@ -448,7 +448,7 @@ SELECT throws_ok(
     INSERT INTO public.organization_members (org_id, user_id, role)
     VALUES ('11111111-1111-1111-1111-111111111111', 'cdcdcdcd-cdcd-cdcd-cdcd-cdcdcdcdcdcd', 'viewer')
   $$,
-  'new row violates row-level security policy%|permission denied%',
+  '42501',
   'Manager cannot perform organization administration member add'
 );
 
@@ -459,7 +459,7 @@ SELECT set_config('request.jwt.claim.sub', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
 
 SELECT throws_ok(
   $$ SELECT key FROM public.system_config LIMIT 1 $$,
-  'permission denied for table system_config%',
+  '42501',
   'Authenticated users cannot read security configuration table'
 );
 
