@@ -135,25 +135,29 @@ export async function appendLedgerEvent(
   const prevEventHash = latestEventHash();
   const eventHash = await createEventHash(event, prevEventHash);
 
-  const record: ReplayLedgerEvent = Object.freeze({
+  // Internal (mutable) copy stored in the ledger so that verifyLedgerIntegrity()
+  // can detect in-place tampering (e.g. in tests or via a compromised runtime).
+  const internal: ReplayLedgerEvent = {
     event_id: await createLedgerId(eventHash),
     ...event,
     prev_event_hash: prevEventHash,
     event_hash: eventHash,
-  });
+  };
 
   // Persist to DB
   try {
     const { appendLedgerEventPersistent } = await import('@/data/repository');
-    await appendLedgerEventPersistent(record);
+    await appendLedgerEventPersistent(internal);
   } catch (error) {
     throw new Error(`Failed to persist ledger event: ${error}`);
   }
 
-  // Update cache
-  ledger.push(record);
+  // Update cache — mutable so verifyLedgerIntegrity can detect tampering.
+  ledger.push(internal);
 
-  return record;
+  // Return a frozen snapshot to callers so they can't accidentally mutate the
+  // canonical record via the return value.
+  return Object.freeze({ ...internal });
 }
 
 /**

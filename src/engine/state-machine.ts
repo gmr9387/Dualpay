@@ -103,11 +103,24 @@ export function isIdempotencyKeyConsumed(key: string): boolean {
 /**
  * Check if an idempotency key has been consumed (persistent check).
  * For payment transitions, always use this to survive restarts.
+ *
+ * Checks the in-memory cache first — if the key is already there, we can
+ * skip the DB round-trip entirely. The DB is consulted only for keys not in
+ * the local cache so that keys consumed by a previous process instance (e.g.
+ * before a server restart) are still detected.
  */
 export async function isIdempotencyKeyConsumedPersistent(key: string): Promise<boolean> {
+  // Fast path: in-memory cache already has it.
+  if (consumedIdempotencyKeys.has(key)) return true;
+
   try {
     const { isIdempotencyKeyConsumedPersistent: checkDB } = await import('@/data/repository');
-    return await checkDB(key);
+    const consumed = await checkDB(key);
+    if (consumed) {
+      // Warm the local cache so subsequent calls skip the DB.
+      consumedIdempotencyKeys.add(key);
+    }
+    return consumed;
   } catch (error) {
     console.error('Failed to check idempotency key in DB:', error);
     // Fail safe: assume consumed if we can't check the DB
