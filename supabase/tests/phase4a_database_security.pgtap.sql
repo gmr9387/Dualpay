@@ -124,20 +124,54 @@ $block$;
 -- RLS enablement checks
 -- -----------------------------------------------------------------------------
 
-SELECT is(
-  (
-    SELECT count(*)::int
-    FROM pg_class c
-    JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE n.nspname = 'public'
-      AND c.relname IN (
-        'claims','organization_members','ops_events','evidence_documents',
-        'appeal_recovery_cases','underpayment_disputes','recovery_outcomes','system_config'
-      )
-      AND c.relrowsecurity
-  ),
-  8,
-  'Protected operational/security tables have RLS enabled'
+-- RLS enablement checks (one assertion per table for clear failure attribution)
+SELECT ok(
+  (SELECT c.relrowsecurity
+   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = 'public' AND c.relname = 'claims'),
+  'claims has RLS enabled'
+);
+SELECT ok(
+  (SELECT c.relrowsecurity
+   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = 'public' AND c.relname = 'organization_members'),
+  'organization_members has RLS enabled'
+);
+SELECT ok(
+  (SELECT c.relrowsecurity
+   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = 'public' AND c.relname = 'ops_events'),
+  'ops_events has RLS enabled'
+);
+SELECT ok(
+  (SELECT c.relrowsecurity
+   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = 'public' AND c.relname = 'evidence_documents'),
+  'evidence_documents has RLS enabled'
+);
+SELECT ok(
+  (SELECT c.relrowsecurity
+   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = 'public' AND c.relname = 'appeal_recovery_cases'),
+  'appeal_recovery_cases has RLS enabled'
+);
+SELECT ok(
+  (SELECT c.relrowsecurity
+   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = 'public' AND c.relname = 'underpayment_disputes'),
+  'underpayment_disputes has RLS enabled'
+);
+SELECT ok(
+  (SELECT c.relrowsecurity
+   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = 'public' AND c.relname = 'recovery_outcomes'),
+  'recovery_outcomes has RLS enabled'
+);
+SELECT ok(
+  (SELECT c.relrowsecurity
+   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = 'public' AND c.relname = 'system_config'),
+  'system_config has RLS enabled'
 );
 
 -- -----------------------------------------------------------------------------
