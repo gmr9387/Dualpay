@@ -14,7 +14,7 @@ import type {
 import { CANONICAL_FIELDS, REQUIRED_BY_SOURCE, fieldDef } from './import-schema';
 import { lookupDenialEntry } from './denial-intelligence';
 
-const MONEY_RE = /[^0-9.\-]/g;
+const MONEY_RE = /[^0-9.-]/g;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}/;
 
 function parseMoneyCents(v: string): number | null {
@@ -27,7 +27,7 @@ function parseMoneyCents(v: string): number | null {
 }
 
 function parseInteger(v: string): number | null {
-  const n = parseInt(v.replace(/[^0-9\-]/g, ''), 10);
+  const n = parseInt(v.replace(/[^0-9-]/g, ''), 10);
   return isFinite(n) ? n : null;
 }
 

@@ -41,10 +41,10 @@ export default function ExceptionDetail() {
         if (v === undefined || v === '') continue;
         const def = CANONICAL_FIELDS.find(f => f.key === k);
         if (def?.kind === 'money') {
-          const n = parseFloat(String(v).replace(/[^0-9.\-]/g, ''));
+          const n = parseFloat(String(v).replace(/[^0-9.-]/g, ''));
           if (isFinite(n)) parsedEdits[k as CanonicalField] = Math.round(n * 100);
         } else if (def?.kind === 'int') {
-          const n = parseInt(String(v).replace(/[^0-9\-]/g, ''), 10);
+          const n = parseInt(String(v).replace(/[^0-9-]/g, ''), 10);
           if (isFinite(n)) parsedEdits[k as CanonicalField] = n;
         } else {
           parsedEdits[k as CanonicalField] = String(v);

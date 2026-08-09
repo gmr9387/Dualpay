@@ -203,7 +203,7 @@ export async function commitBatch(
       const orgId = await getCurrentOrgId();
       if (orgId) {
         const { created } = await reconcileRemittanceOutcomes(batch, rowClaimPairs, orgId);
-        if (created > 0) console.info(`[reconcile] auto-created ${created} outcome(s)`);
+        if (created > 0) console.warn(`[reconcile] auto-created ${created} outcome(s)`);
       }
     } catch (e) {
       console.error('[import-batches] reconcileRemittanceOutcomes failed', e);
