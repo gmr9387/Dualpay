@@ -429,6 +429,27 @@ describe('CalculationEngine', () => {
       );
       expect(result!.primary_payer_id).toBe('spouse_plan');
     });
+
+    it('birthday rule: leap-year Feb 29 member is primary over Mar 1 spouse', () => {
+      // Member born Feb 29 (leap year) → "02-29" < "03-01" lexically → member is primary
+      const result = determineCOBPrimacy(
+        [{ payer_id: 'p1', payer_name: 'P1', coverage_type: 'medical' }],
+        { member_dob: '1984-02-29', spouse_dob: '1984-03-01' },
+        [birthdayRule]
+      );
+      expect(result).not.toBeNull();
+      expect(result!.primary_payer_id).toBe('member_plan');
+    });
+
+    it('birthday rule: Feb 28 spouse is primary over Feb 29 member', () => {
+      // Spouse born Feb 28 → "02-28" < "02-29" → spouse is primary
+      const result = determineCOBPrimacy(
+        [{ payer_id: 'p1', payer_name: 'P1', coverage_type: 'medical' }],
+        { member_dob: '1984-02-29', spouse_dob: '1984-02-28' },
+        [birthdayRule]
+      );
+      expect(result!.primary_payer_id).toBe('spouse_plan');
+    });
   });
 
   describe('Trace integrity', () => {

@@ -29,7 +29,7 @@ export function useAssignments() {
   useEffect(() => {
     if (!currentOrg) { setAssignees([]); return; }
     loadOrgAssignees(currentOrg.org_id).then(setAssignees).catch(() => setAssignees([]));
-  }, [currentOrg?.org_id]);
+  }, [currentOrg]);
 
   return {
     store,

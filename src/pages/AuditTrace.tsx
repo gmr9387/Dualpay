@@ -41,7 +41,7 @@ export default function AuditTrace() {
             .limit(200),
         ]);
 
-        const opsRows: Row[] = (ops ?? []).map((e: any) => ({
+        const opsRows: Row[] = (ops ?? []).map((e: Record<string, unknown>) => ({
           event_id: e.event_id,
           occurred_at: e.occurred_at,
           kind: e.kind,
@@ -51,9 +51,9 @@ export default function AuditTrace() {
           source: 'ops_events' as const,
         }));
 
-        const traceRows: Row[] = (traces ?? []).map((t: any) => {
+        const traceRows: Row[] = (traces ?? []).map((t: Record<string, unknown>) => {
           const p = (t.payload ?? {}) as Record<string, unknown>;
-          const rule_firings = (p.rule_firings as any[]) ?? [];
+          const rule_firings = (p.rule_firings as unknown[]) ?? [];
           return {
             event_id: t.trace_id,
             occurred_at: (p.timestamp as string) ?? t.created_at,

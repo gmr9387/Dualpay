@@ -9,11 +9,12 @@
  * Reuses the existing case-management engine helper (createCaseEvent).
  * Does NOT duplicate the case domain model.
  */
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { createCaseEvent } from '@/engine/case-management';
 import { appendOpsEvent } from '@/lib/ops-events';
 
-const sb = supabase as any;
+const sb = supabase as ReturnType<typeof createClient>;
 
 export type AutoCaseTrigger =
   | 'high_severity_denial'

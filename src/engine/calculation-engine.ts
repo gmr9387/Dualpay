@@ -384,7 +384,7 @@ export function adjudicateLine(
       coinsurance: 0,
       copay: 0,
       plan_paid: 0,
-      member_responsibility: 0,
+      member_responsibility: line.billed_amount,
       adjustments: [
         ...adjustments,
         {

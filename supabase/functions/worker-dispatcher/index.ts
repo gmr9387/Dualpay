@@ -126,7 +126,7 @@ interface DiscoveredCandidate {
   source: 'remittance_line' | 'claim_payload';
 }
 
-function pickLatestResponse(responses: any[] | undefined): any | null {
+function pickLatestResponse(responses: Record<string, unknown>[] | undefined): Record<string, unknown> | null {
   if (!Array.isArray(responses) || !responses.length) return null;
   const ranked = [...responses]
     .filter(r => (r?.allowed_cents ?? 0) > 0 || (r?.paid_cents ?? 0) > 0)
@@ -150,7 +150,7 @@ async function discoverCandidates(
   if (filters.claim_ids?.length) lq = lq.in('claim_id', filters.claim_ids);
   if (filters.payer_name) lq = lq.ilike('payer_name', filters.payer_name);
   const { data: lineRows } = await lq.limit(5000);
-  for (const r of (lineRows ?? []) as Array<any>) {
+  for (const r of (lineRows ?? []) as Array<Record<string, unknown>>) {
     if (!r.claim_id || !r.payer_name) continue;
     const billed = Number(r.billed_amount_cents ?? 0);
     const allowed = Number(r.allowed_amount_cents ?? 0);
@@ -172,7 +172,7 @@ async function discoverCandidates(
       .eq('org_id', org_id);
     if (filters.claim_ids?.length) q = q.in('claim_id', filters.claim_ids);
     const { data: rows } = await q.limit(2000);
-    for (const r of (rows ?? []) as Array<{ claim_id: string; payload: any; total_billed_cents: number; service_date_from: string }>) {
+    for (const r of (rows ?? []) as Array<{ claim_id: string; payload: Record<string, unknown> | null; total_billed_cents: number; service_date_from: string }>) {
       if (coveredClaims.has(r.claim_id)) continue;
       const intel = r.payload?.intel ?? {};
       const payer = (intel.payer_name ?? r.payload?.payer_name ?? '') as string;
@@ -184,7 +184,7 @@ async function discoverCandidates(
       const allowed = Number(resp.allowed_cents ?? 0);
       const paid = Number(resp.paid_cents ?? 0);
       if (billed <= 0 || (allowed === 0 && paid === 0)) continue;
-      const lines: any[] = Array.isArray(r.payload?.lines) ? r.payload.lines : [];
+      const lines: Record<string, unknown>[] = Array.isArray((r.payload as Record<string, unknown> | null)?.lines) ? ((r.payload as Record<string, unknown>).lines as Record<string, unknown>[]) : [];
       if (lines.length === 0) {
         out.push({ claim_id: r.claim_id, payer_name: payer, procedure_code: null,
           service_date: r.service_date_from, billed_cents: billed, allowed_cents: allowed, paid_cents: paid,
@@ -309,7 +309,7 @@ async function runContractRecovery(
     if (ins) {
       created += 1;
       valueCents += variance;
-      const dispute_id = (ins as any).dispute_id as string;
+      const dispute_id = (ins as Record<string, unknown>).dispute_id as string;
       await audit(client, 'dispute_created',
         `Dispute opened: ${c.payer_name} variance ${variancePct.toFixed(1)}%`,
         `system:${worker_id}`, c.claim_id,
@@ -344,7 +344,7 @@ async function runContractRecovery(
 
 // ---------- Dispute generation handler (server-side discovery) ----------
 async function runDisputeGeneration(client: ReturnType<typeof createClient>, job: QueueJob, worker_id: string) {
-  const payloadCandidates = (job.payload?.candidates as Array<any> | undefined) ?? [];
+  const payloadCandidates = (job.payload?.candidates as Array<Record<string, unknown>> | undefined) ?? [];
   if (payloadCandidates.length === 0) {
     // Delegate to contract recovery analysis path for auto-discovery.
     return await runContractRecovery(client, job, worker_id);
@@ -363,7 +363,7 @@ async function runDisputeGeneration(client: ReturnType<typeof createClient>, job
       created += 1; valueCents += Number(c.variance_amount_cents ?? 0);
       await audit(client, 'dispute_created',
         `Dispute opened (manual candidate): ${c.payer_name}`,
-        `system:${worker_id}`, c.claim_id, { dispute_id: (ins as any).dispute_id });
+        `system:${worker_id}`, c.claim_id, { dispute_id: (ins as Record<string, unknown>).dispute_id });
     }
   }
   return {
@@ -396,7 +396,7 @@ async function runHandler(client: ReturnType<typeof createClient>, job: QueueJob
       client.from('payer_contracts').select('payer_name').eq('org_id', job.org_id),
     ]);
     const set = new Set(((contracts ?? []) as Array<{ payer_name: string }>).map(c => (c.payer_name ?? '').toLowerCase()));
-    const rows = (claims ?? []) as Array<{ payload: any }>;
+    const rows = (claims ?? []) as Array<{ payload: Record<string, unknown> | null }>;
     let matched = 0;
     for (const r of rows) {
       const p = (r.payload?.intel?.payer_name ?? r.payload?.payer_name ?? '') as string;
@@ -425,7 +425,7 @@ async function runHandler(client: ReturnType<typeof createClient>, job: QueueJob
         description: `Auto-case for ${t.payer_name} underpayment (${t.variance_percent?.toFixed?.(1) ?? '?'}%)`,
       }] as never).select('case_id').single();
       if (c) {
-        await client.from('case_claim_links').insert([{ case_id: (c as any).case_id, claim_id: t.claim_id, org_id: job.org_id }] as never);
+        await client.from('case_claim_links').insert([{ case_id: (c as Record<string, unknown>).case_id, claim_id: t.claim_id, org_id: job.org_id }] as never);
         created += 1;
       }
     }
@@ -484,9 +484,9 @@ async function executeOne(client: ReturnType<typeof createClient>, worker_id: st
       `system:${worker_id}`, null,
       { queue_job_id: job.queue_job_id, worker_id, ...r });
     return { ok: true };
-  } catch (e: any) {
+  } catch (e) {
     const duration_ms = Date.now() - start;
-    const message = e?.message ?? String(e);
+    const message = e instanceof Error ? e.message : String(e);
     await client.from('job_runs').insert([{
       queue_job_id: job.queue_job_id, worker_id, duration_ms, status: 'failed',
       records_processed: 0, records_succeeded: 0, records_failed: 0,

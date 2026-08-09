@@ -14,6 +14,7 @@
  *   - queue_assignment
  *   - executive_recalculation
  */
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { startJob, completeJob, failJob } from '@/lib/automation';
 import { listContracts, listDisputes, createDispute } from '@/lib/contracts';
@@ -22,7 +23,7 @@ import { autoCreateCase } from './auto-case-generator';
 import { evaluateRules } from './automation-rules';
 import type { JobType, JobRunResult, AutomationJob } from '@/types/automation';
 
-const sb = supabase as any;
+const sb = supabase as ReturnType<typeof createClient>;
 
 export interface JobContext {
   pipeline_id?: string;
@@ -242,8 +243,9 @@ export async function runJob(
   try {
     const result = await HANDLERS[job_type](ctx);
     return await completeJob(job.job_id, result);
-  } catch (e: any) {
-    await failJob(job.job_id, e?.message ?? String(e));
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    await failJob(job.job_id, msg);
     return null;
   }
 }

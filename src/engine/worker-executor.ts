@@ -51,7 +51,7 @@ export async function executeJob(job: QueueJob): Promise<{ ok: boolean; result?:
         details: automationJob.result ?? undefined,
       },
     };
-  } catch (e: any) {
+  } catch (e) {
     const duration = Date.now() - start;
     const err = e instanceof Error ? e : new Error(String(e));
     await failQueueJob(job, wid, duration, { message: err.message, stack: err.stack ?? null });

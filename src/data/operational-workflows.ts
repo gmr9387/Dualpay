@@ -423,7 +423,7 @@ export async function getMyWorklist(
   if (error) throw error;
 
   const now = new Date();
-  return (data ?? []).map((row: any) => {
+  return (data ?? []).map((row: Record<string, unknown>) => {
     const dueDate = row.due_date ? new Date(row.due_date) : null;
     const daysUntilDue = dueDate ? Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : undefined;
 
@@ -468,7 +468,7 @@ export async function getOverdueClaims(
   if (error) throw error;
 
   const now = new Date();
-  return (data ?? []).map((row: any) => ({
+  return (data ?? []).map((row: Record<string, unknown>) => ({
     claim_id: row.claim_id,
     total_billed_cents: row.claims?.total_billed_cents ?? 0,
     assigned_to_user_id: row.assigned_to_user_id,
@@ -513,7 +513,7 @@ export async function getDueTodayClaims(
 
   if (error) throw error;
 
-  return (data ?? []).map((row: any) => ({
+  return (data ?? []).map((row: Record<string, unknown>) => ({
     claim_id: row.claim_id,
     total_billed_cents: row.claims?.total_billed_cents ?? 0,
     assigned_to_user_id: row.assigned_to_user_id,
@@ -554,7 +554,7 @@ export async function getHighDollarClaims(
   if (error) throw error;
 
   const now = new Date();
-  return (data ?? []).map((row: any) => {
+  return (data ?? []).map((row: Record<string, unknown>) => {
     const dueDate = row.due_date ? new Date(row.due_date) : null;
     return {
       claim_id: row.claim_id,
@@ -592,7 +592,7 @@ export async function getClaimTimeline(
 
   if (error) throw error;
 
-  return (data ?? []).map((row: any) => ({
+  return (data ?? []).map((row: Record<string, unknown>) => ({
     event_id: row.event_id,
     occurred_at: row.occurred_at,
     kind: row.kind,
@@ -622,7 +622,7 @@ export async function getClaimTimelineByKind(
 
   if (error) throw error;
 
-  return (data ?? []).map((row: any) => ({
+  return (data ?? []).map((row: Record<string, unknown>) => ({
     event_id: row.event_id,
     occurred_at: row.occurred_at,
     kind: row.kind,
