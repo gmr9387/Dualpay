@@ -168,7 +168,7 @@ export async function commitBatch(
 
     const events = rowClaimPairs.flatMap(({ claim_id }, idx) => {
       const line = insertedLines[idx];
-      return [
+      const evts: Parameters<typeof appendLineageEvents>[0] = [
         {
           claim_id,
           remittance_line_id: line?.remittance_line_id ?? null,
@@ -184,6 +184,24 @@ export async function commitBatch(
           payload: { import_batch_id: batch.batch_id },
         },
       ];
+      // denial_detected: emitted exactly once per 835 row classified as a denial.
+      // The classification is persisted in remittance_lines.classification; we use
+      // that stored value rather than re-running the classifier to stay consistent.
+      if (isRemittance && line?.classification === 'denial') {
+        evts.push({
+          claim_id,
+          remittance_line_id: line.remittance_line_id ?? null,
+          event_type: 'denial_detected' as const,
+          event_summary: `Denial detected on claim ${claim_id} (CARC ${line.carc_code ?? 'unknown'})`,
+          payload: {
+            import_batch_id: batch.batch_id,
+            carc_code: line.carc_code ?? null,
+            rarc_code: line.rarc_code ?? null,
+            classification: 'denial',
+          },
+        });
+      }
+      return evts;
     });
     await appendLineageEvents(events);
   } catch (e) {
