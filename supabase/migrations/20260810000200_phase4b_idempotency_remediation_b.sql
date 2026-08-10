@@ -582,6 +582,7 @@ BEGIN
    WHERE key = p_idempotency_key
      AND org_id = p_org_id
      AND operation = 'appeal_advance'
+     AND claim_id = v_claim_id_val
      AND payload_hash IS NOT DISTINCT FROM v_effective_payload_hash
      AND result_id IS NULL;
 
