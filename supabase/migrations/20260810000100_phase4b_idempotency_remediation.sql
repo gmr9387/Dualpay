@@ -392,6 +392,7 @@ DECLARE
   v_result_id     TEXT;
   v_rows_updated  INT;
   v_case_org_id   UUID;
+  v_claim_id_val  TEXT;
 BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'UNAUTHORIZED: authentication required';
@@ -417,7 +418,7 @@ BEGIN
   END IF;
 
   -- Validate case ownership
-  SELECT organization_id INTO v_case_org_id
+  SELECT organization_id, claim_id INTO v_case_org_id, v_claim_id_val
     FROM public.appeal_recovery_cases
    WHERE id = p_case_id;
 
@@ -445,7 +446,7 @@ BEGIN
 
   INSERT INTO public.idempotency_keys (key, claim_id, org_id, actor, consumed_at, operation, result_id, payload_hash)
   VALUES (p_idempotency_key,
-          (SELECT claim_id FROM public.appeal_recovery_cases WHERE id = p_case_id),
+          v_claim_id_val,
           p_org_id, p_actor, now(), 'appeal_advance', v_result_id, p_payload_hash);
 
   RETURN jsonb_build_object('already_consumed', false, 'result_id', v_result_id, 'new_state', p_next_state);

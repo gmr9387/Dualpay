@@ -287,16 +287,15 @@ export async function logWriteOff(
   claimId: string,
   orgId: string,
   reason: string,
-  actor?: string,
-  idempotencyKey?: string,
+  actor: string | undefined,
+  idempotencyKey: string,
 ): Promise<string> {
-  const key = idempotencyKey ?? '';
-  if (!key) {
+  if (!idempotencyKey) {
     throw new Error('logWriteOff: idempotencyKey is required');
   }
 
   const { data, error } = await supabase.rpc('rpc_log_write_off', {
-    p_idempotency_key: key,
+    p_idempotency_key: idempotencyKey,
     p_claim_id:        claimId,
     p_org_id:          orgId,
     p_actor:           actor ?? 'unknown',

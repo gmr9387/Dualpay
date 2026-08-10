@@ -155,7 +155,10 @@ export function useAppealRecoveryCases() {
         .from('appeal_recovery_cases')
         .update(extra as never)
         .eq('id', arc.id);
-      if (patchErr) console.warn('[advance] extra patch failed', patchErr.message);
+      if (patchErr) {
+        setError(patchErr.message);
+        return null;
+      }
     }
 
     await load();
