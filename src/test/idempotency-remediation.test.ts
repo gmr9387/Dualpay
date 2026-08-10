@@ -326,62 +326,56 @@ describe('canTransition — in-memory UI cache (UNIT)', () => {
 
 // ── DB TESTS — NOT EXECUTED (environment Supabase/Postgres unavailable) ──────
 //
-// These are structurally complete and can be run against a live DB by removing
-// describe.skip and providing a Supabase service-role client.
+// These are structured DB/concurrency specifications for Phase 4B Remediation B.
+// They intentionally remain skipped in this environment and must be run against
+// a live PostgreSQL/Supabase runtime.
 
-describe.skip('DB — rpc_advance_payment_state — concurrent duplicate (NOT EXECUTED)', () => {
-  it('concurrent requests with same key → exactly one mutation committed', async () => {
-    // Fire two concurrent RPC calls with the same idempotency_key.
-    // idempotency_keys PRIMARY KEY causes the second INSERT to fail.
-    // ASSERTION: only one call returns already_consumed = false;
-    //            both return the same result_id.
-  });
-
-  it('restart: key recorded in DB blocks retry in a fresh session', async () => {
-    // Session 1: advancePaymentState → succeeds, key in DB
-    // Session 2: same key, fresh in-memory cache → already_consumed = true
-    // ASSERTION: claim status updated exactly once.
-  });
-
-  it('wrong from_status rejected with STATE_CONFLICT', async () => {});
-
-  it('cross-tenant caller rejected with FORBIDDEN', async () => {});
-
-  it('unauthenticated caller rejected with UNAUTHORIZED', async () => {});
-
-  it('same key with different payload_hash rejected with IDEMPOTENCY_CONFLICT', async () => {});
+describe.skip('DB — rpc_advance_payment_state — first-use reservation (NOT EXECUTED)', () => {
+  it('first request succeeds and writes one transition', async () => {});
+  it('sequential duplicate with same key returns original result_id', async () => {});
+  it('concurrent same-key requests return same result_id with no unique_violation surfaced', async () => {});
+  it('exactly one payment status mutation is committed under concurrent same-key calls', async () => {});
+  it('same key with different payload is rejected', async () => {});
+  it('same key with different operation is rejected', async () => {});
+  it('rollback after reservation does not leave key stuck; retry succeeds', async () => {});
+  it('cross-tenant key reuse is rejected', async () => {});
+  it('unauthorized caller cannot read another tenant idempotent result', async () => {});
 });
 
-describe.skip('DB — rpc_log_recovery_event (NOT EXECUTED)', () => {
-  it('duplicate request does not double-count recovered_amount_cents', async () => {
-    // Two calls with same key, same amount.
-    // ASSERTION: recovery_outcomes.recovered_amount_cents = single amount.
-  });
-
-  it('two distinct keys accumulate recovered_amount_cents atomically', async () => {
-    // Two calls with different keys, different amounts.
-    // ASSERTION: recovered_amount_cents = sum of both amounts.
-  });
-
-  it('concurrent duplicate requests: only one ops_event row created', async () => {});
-
-  it('cross-tenant caller rejected', async () => {});
+describe.skip('DB — rpc_log_recovery_event — first-use reservation (NOT EXECUTED)', () => {
+  it('first request succeeds and creates one recovery event', async () => {});
+  it('sequential duplicate with same key returns original event_id', async () => {});
+  it('concurrent same-key requests return same event_id', async () => {});
+  it('exactly one ops_event row is created for concurrent same-key calls', async () => {});
+  it('recovery aggregate increments exactly once for concurrent same-key calls', async () => {});
+  it('same key with different payload is rejected', async () => {});
+  it('same key with different operation is rejected', async () => {});
+  it('rollback after reservation does not leave key stuck; retry succeeds', async () => {});
+  it('cross-tenant key reuse is rejected', async () => {});
+  it('unauthorized caller cannot read another tenant idempotent result', async () => {});
 });
 
-describe.skip('DB — rpc_log_write_off (NOT EXECUTED)', () => {
-  it('duplicate request returns original event_id', async () => {});
-  it('only one claim_written_off row in ops_events after duplicate', async () => {});
-  it('cross-tenant caller rejected', async () => {});
+describe.skip('DB — rpc_log_write_off — first-use reservation (NOT EXECUTED)', () => {
+  it('first request succeeds and creates one write-off event', async () => {});
+  it('sequential duplicate with same key returns original event_id', async () => {});
+  it('concurrent same-key requests return same event_id', async () => {});
+  it('exactly one claim_written_off ops_event row is committed', async () => {});
+  it('same key with different payload is rejected', async () => {});
+  it('same key with different operation is rejected', async () => {});
+  it('rollback after reservation does not leave key stuck; retry succeeds', async () => {});
+  it('cross-tenant key reuse is rejected', async () => {});
+  it('unauthorized caller cannot read another tenant idempotent result', async () => {});
 });
 
-describe.skip('DB — rpc_advance_appeal_case — optimistic lock (NOT EXECUTED)', () => {
-  it('stale transition rejected when current_state has advanced', async () => {
-    // Case already in appeal_filed (advanced by Worker A).
-    // Worker B sends stale denied → appeal_filed with a new key.
-    // ASSERTION: STATE_CONFLICT; no duplicate row.
-  });
-
-  it('cross-tenant attempt rejected', async () => {});
-
-  it('idempotency key recorded; duplicate advance returns original result_id', async () => {});
+describe.skip('DB — rpc_advance_appeal_case — first-use reservation (NOT EXECUTED)', () => {
+  it('first request succeeds and performs one optimistic transition', async () => {});
+  it('sequential duplicate with same key returns original result_id', async () => {});
+  it('concurrent same-key requests return same result_id', async () => {});
+  it('exactly one state transition is committed under concurrent same-key calls', async () => {});
+  it('stale/different expected state remains rejected', async () => {});
+  it('same key with different payload is rejected', async () => {});
+  it('same key with different operation is rejected', async () => {});
+  it('rollback after reservation does not leave key stuck; retry succeeds', async () => {});
+  it('cross-tenant key reuse is rejected', async () => {});
+  it('unauthorized caller cannot read another tenant idempotent result', async () => {});
 });
