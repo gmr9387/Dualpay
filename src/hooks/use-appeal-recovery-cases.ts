@@ -117,14 +117,53 @@ export function useAppealRecoveryCases() {
   const advance = useCallback(async (
     arc: AppealRecoveryCase,
     nextState: AppealRecoveryState,
+    idempotencyKey: string,
     extra?: AppealRecoveryCaseUpdate
   ): Promise<AppealRecoveryCase | null> => {
+    if (!currentOrg) return null;
+
     if (!canTransitionTo(arc.current_state, nextState)) {
       setError(`Cannot transition from ${arc.current_state} → ${nextState}`);
       return null;
     }
-    return update(arc.id, { current_state: nextState, ...extra });
-  }, [update]);
+
+    if (!idempotencyKey) {
+      setError('advance: idempotencyKey is required');
+      return null;
+    }
+
+    // Phase 4B: route through atomic RPC instead of a bare client-side update.
+    const { data: rpcData, error: rpcErr } = await db.rpc('rpc_advance_appeal_case', {
+      p_idempotency_key: idempotencyKey,
+      p_case_id:         arc.id,
+      p_org_id:          currentOrg.org_id,
+      p_actor:           arc.assigned_to_user_id ?? 'unknown',
+      p_expected_state:  arc.current_state,
+      p_next_state:      nextState,
+    } as never);
+
+    if (rpcErr) {
+      setError(rpcErr.message);
+      return null;
+    }
+
+    const rpc = rpcData as { already_consumed: boolean; result_id: string; new_state: string };
+
+    // If extra fields need updating (e.g. recovered_amount_cents) apply them via a regular update.
+    if (extra && Object.keys(extra).length > 0) {
+      const { error: patchErr } = await db
+        .from('appeal_recovery_cases')
+        .update(extra as never)
+        .eq('id', arc.id);
+      if (patchErr) console.warn('[advance] extra patch failed', patchErr.message);
+    }
+
+    await load();
+
+    // Return the refreshed record; fall back to a synthetic object if load is async.
+    const refreshed = cases.find((c) => c.id === arc.id);
+    return refreshed ?? { ...arc, current_state: rpc.new_state as AppealRecoveryState };
+  }, [currentOrg, cases, load]);
 
   return { cases, loading, error, reload: load, create, update, advance };
 }
