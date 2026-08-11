@@ -767,21 +767,30 @@ export type Database = {
           claim_id: string
           consumed_at: string
           key: string
+          operation: string | null
           org_id: string | null
+          payload_hash: string | null
+          result_id: string | null
         }
         Insert: {
           actor: string
           claim_id: string
           consumed_at?: string
           key: string
+          operation?: string | null
           org_id?: string | null
+          payload_hash?: string | null
+          result_id?: string | null
         }
         Update: {
           actor?: string
           claim_id?: string
           consumed_at?: string
           key?: string
+          operation?: string | null
           org_id?: string | null
+          payload_hash?: string | null
+          result_id?: string | null
         }
         Relationships: [
           {

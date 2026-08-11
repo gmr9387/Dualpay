@@ -112,50 +112,6 @@ export function isIdempotencyKeyConsumed(key: string): boolean {
 }
 
 /**
- * Check if an idempotency key has been consumed (persistent DB check).
- *
- * Checks the in-memory cache first for speed; falls back to the DB for keys
- * consumed in a prior session.  Fails closed: if the DB is unavailable,
- * returns true (assumed consumed) to prevent duplicate mutations.
- */
-export async function isIdempotencyKeyConsumedPersistent(key: string): Promise<boolean> {
-  if (consumedIdempotencyKeys.has(key)) return true;
-
-  try {
-    const { isIdempotencyKeyConsumedPersistent: checkDB } = await import('@/data/repository');
-    const consumed = await checkDB(key);
-    if (consumed) {
-      consumedIdempotencyKeys.add(key);
-    }
-    return consumed;
-  } catch (error) {
-    console.error('Failed to check idempotency key in DB:', error);
-    return true;
-  }
-}
-
-/**
- * Record an idempotency key consumption in persistent storage.
- *
- * Phase 4B: Only used by the standalone repository helper path.  For
- * financial mutations, use the SECURITY DEFINER RPCs which record the key
- * inside the same transaction as the mutation.
- */
-export async function recordIdempotencyKeyConsumptionPersistent(
-  key: string,
-  claimId: string,
-  actor: string,
-): Promise<void> {
-  try {
-    const { recordIdempotencyKeyConsumption } = await import('@/data/repository');
-    await recordIdempotencyKeyConsumption(key, claimId, actor);
-    consumedIdempotencyKeys.add(key);
-  } catch (error) {
-    throw new Error(`Failed to record idempotency key consumption: ${error}`);
-  }
-}
-
-/**
  * Advance a claim through a payment state transition using the authoritative
  * server-side RPC.
  *

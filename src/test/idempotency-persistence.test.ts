@@ -1,13 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   consumeIdempotencyKey,
   isIdempotencyKeyConsumed,
-  isIdempotencyKeyConsumedPersistent,
-  recordIdempotencyKeyConsumptionPersistent,
   clearIdempotencyKeysForDev,
   canTransition,
   type TransitionContext,
 } from '@/engine/state-machine';
+import { supabase } from '@/integrations/supabase/client';
 
 describe('Idempotency — Persistence', () => {
   beforeEach(() => {
@@ -46,31 +45,51 @@ describe('Idempotency — Persistence', () => {
     });
   });
 
-  describe('Persistent Key Recording', () => {
-    it('records key consumption to DB', async () => {
-      const key = 'idem_persistent_001';
-      const claimId = 'CLM-001';
-      const actor = 'payment-service';
-      
-      await recordIdempotencyKeyConsumptionPersistent(key, claimId, actor);
-      
-      // After recording, in-memory cache should also have it
+  describe('Persistent Key Recording via Phase 4B RPC', () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    it('advancePaymentState warms the in-memory cache on first execution', async () => {
+      vi.spyOn(supabase, 'rpc' as never).mockResolvedValue({
+        data: { already_consumed: false, result_id: 'PAY-CLM-001-abc', new_status: 'PAYMENT_IN_PROGRESS' },
+        error: null,
+      } as never);
+
+      const { advancePaymentState } = await import('@/engine/state-machine');
+      const key = 'payment:idem_persistent_001';
+
+      await advancePaymentState({
+        idempotencyKey: key,
+        claimId: 'CLM-001',
+        orgId: 'org-uuid',
+        fromStatus: 'ADJUDICATED',
+        toStatus: 'PAYMENT_IN_PROGRESS',
+        actor: 'analyst-1',
+      });
+
       expect(isIdempotencyKeyConsumed(key)).toBe(true);
     });
 
-    it('checks persistent storage for consumed key', async () => {
-      const key = 'idem_persistent_002';
-      
-      // First check should be false (not consumed)
-      let isConsumed = await isIdempotencyKeyConsumedPersistent(key);
-      expect(isConsumed).toBe(false);
-      
-      // Record the key
-      await recordIdempotencyKeyConsumptionPersistent(key, 'CLM-002', 'system');
-      
-      // Second check should be true (consumed)
-      isConsumed = await isIdempotencyKeyConsumedPersistent(key);
-      expect(isConsumed).toBe(true);
+    it('advancePaymentState does NOT warm cache when already_consumed', async () => {
+      vi.spyOn(supabase, 'rpc' as never).mockResolvedValue({
+        data: { already_consumed: true, result_id: 'PAY-CLM-001-original', new_status: 'PAYMENT_IN_PROGRESS' },
+        error: null,
+      } as never);
+
+      const { advancePaymentState } = await import('@/engine/state-machine');
+      const key = 'payment:idem_persistent_002';
+
+      await advancePaymentState({
+        idempotencyKey: key,
+        claimId: 'CLM-001',
+        orgId: 'org-uuid',
+        fromStatus: 'ADJUDICATED',
+        toStatus: 'PAYMENT_IN_PROGRESS',
+        actor: 'analyst-1',
+      });
+
+      // already_consumed = true means the key was recorded in a prior session;
+      // the UI cache is intentionally NOT warmed to avoid hiding the replay state.
+      expect(isIdempotencyKeyConsumed(key)).toBe(false);
     });
   });
 
@@ -209,16 +228,30 @@ describe('Idempotency — Persistence', () => {
     });
   });
 
-  describe('Multiple Claims', () => {
-    it('tracks keys per claim', async () => {
-      const key1 = 'idem_clm_001_payment';
-      const key2 = 'idem_clm_002_payment';
-      
-      await recordIdempotencyKeyConsumptionPersistent(key1, 'CLM-001', 'system');
-      await recordIdempotencyKeyConsumptionPersistent(key2, 'CLM-002', 'system');
-      
+  describe('Multiple Claims via Phase 4B RPC', () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    it('independent keys for different claims are tracked separately', async () => {
+      const spy = vi.spyOn(supabase, 'rpc' as never)
+        .mockResolvedValueOnce({
+          data: { already_consumed: false, result_id: 'PAY-CLM-001-x', new_status: 'PAYMENT_IN_PROGRESS' },
+          error: null,
+        } as never)
+        .mockResolvedValueOnce({
+          data: { already_consumed: false, result_id: 'PAY-CLM-002-y', new_status: 'PAYMENT_IN_PROGRESS' },
+          error: null,
+        } as never);
+
+      const { advancePaymentState } = await import('@/engine/state-machine');
+      const key1 = 'payment:idem_clm_001_payment';
+      const key2 = 'payment:idem_clm_002_payment';
+
+      await advancePaymentState({ idempotencyKey: key1, claimId: 'CLM-001', orgId: 'org-uuid', fromStatus: 'ADJUDICATED', toStatus: 'PAYMENT_IN_PROGRESS', actor: 'system' });
+      await advancePaymentState({ idempotencyKey: key2, claimId: 'CLM-002', orgId: 'org-uuid', fromStatus: 'ADJUDICATED', toStatus: 'PAYMENT_IN_PROGRESS', actor: 'system' });
+
       expect(isIdempotencyKeyConsumed(key1)).toBe(true);
       expect(isIdempotencyKeyConsumed(key2)).toBe(true);
+      expect(spy).toHaveBeenCalledTimes(2);
     });
   });
 });

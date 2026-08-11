@@ -21,7 +21,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import {
   updateAssignment, addNote, logAppealEvent, logRecoveryEvent, logWriteOff,
-  getClaimTimeline, getNoteTimeline,
+  getClaimTimeline, getNoteTimeline, makeIdempotencyKey,
   type TimelineEvent, type ClaimAssignmentRecord,
 } from '@/data/operational-workflows';
 import { supabase } from '@/integrations/supabase/client';
@@ -548,7 +548,7 @@ function RecoveryPanel({
       </div>
       <div className="flex justify-end">
         <Button size="sm" disabled={busy || !valid} onClick={() => {
-          const idempotencyKey = crypto.randomUUID();
+          const idempotencyKey = makeIdempotencyKey('recovery');
           onSubmit({
             recoveryType: type,
             amountCents: Math.round(Number(amount) * 100),
@@ -579,7 +579,7 @@ function WriteOffForm({
         <Button
           size="sm" variant="outline" disabled={busy || !reason.trim()}
           className="border-status-denied/40 text-status-denied hover:bg-status-denied/10"
-          onClick={() => { onSubmit(reason.trim(), crypto.randomUUID()); setReason(''); }}
+          onClick={() => { onSubmit(reason.trim(), makeIdempotencyKey('write_off')); setReason(''); }}
         >
           <XCircle className="h-3.5 w-3.5 mr-1" /> Write off claim
         </Button>

@@ -22,6 +22,32 @@ const uuidv4 = (): string =>
     ? crypto.randomUUID()
     : `${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 10)}-${Math.random().toString(16).slice(2, 10)}`;
 
+// ── Idempotency Key Factory ────────────────────────────────────
+//
+// Convention: every idempotency key MUST be prefixed with the operation name
+// so the DB-level operation consistency check in rpc_* functions cannot be
+// silently bypassed by a caller that reuses the same raw UUID across different
+// operations.
+//
+// Supported prefixes:
+//   payment:   → rpc_advance_payment_state
+//   recovery:  → rpc_log_recovery_event
+//   write_off: → rpc_log_write_off
+//   appeal:    → rpc_advance_appeal_case
+//
+// Usage:
+//   const key = makeIdempotencyKey('payment');
+//
+// The returned key is a stable, collision-resistant string that is safe to
+// pass to any Phase 4B RPC.  Always generate a fresh key per logical request;
+// never cache and re-send a key across retries that carry different payloads.
+
+export type IdempotencyKeyOperation = 'payment' | 'recovery' | 'write_off' | 'appeal';
+
+export function makeIdempotencyKey(operation: IdempotencyKeyOperation): string {
+  return `${operation}:${uuidv4()}`;
+}
+
 // =========================================================
 // Types
 // =========================================================
