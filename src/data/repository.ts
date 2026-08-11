@@ -369,7 +369,7 @@ export async function listLedgerEventsPersistent(): Promise<ReplayLedgerEvent[]>
     .select('*')
     .order('timestamp', { ascending: true });
   if (error) throw error;
-  return (data ?? []).map((row: any) => ({
+  return (data ?? []).map((row: Record<string, unknown>) => ({
     event_id: row.event_id,
     type: row.type as ReplayLedgerEvent['type'],
     claim_id: row.claim_id,
@@ -395,7 +395,7 @@ export async function listLedgerEventsForClaimPersistent(
     .eq('claim_id', claimId)
     .order('timestamp', { ascending: true });
   if (error) throw error;
-  return (data ?? []).map((row: any) => ({
+  return (data ?? []).map((row: Record<string, unknown>) => ({
     event_id: row.event_id,
     type: row.type as ReplayLedgerEvent['type'],
     claim_id: row.claim_id,
@@ -407,55 +407,6 @@ export async function listLedgerEventsForClaimPersistent(
     event_hash: row.event_hash,
     details: (row.details ?? {}) as Record<string, unknown>,
   }));
-}
-
-// ── Idempotency Key Persistence ──────────────────────────────
-
-/**
- * Record an idempotency key consumption in persistent storage.
- */
-export async function recordIdempotencyKeyConsumption(
-  key: string,
-  claimId: string,
-  actor: string,
-): Promise<void> {
-  const { error } = await supabase.from('idempotency_keys').insert([{
-    key,
-    claim_id: claimId,
-    actor,
-    consumed_at: new Date().toISOString(),
-  }] as never);
-  if (error) throw error;
-}
-
-/**
- * Check if an idempotency key has already been consumed.
- */
-export async function isIdempotencyKeyConsumedPersistent(
-  key: string,
-): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('idempotency_keys')
-    .select('key')
-    .eq('key', key)
-    .maybeSingle();
-  if (error) throw error;
-  return !!data;
-}
-
-/**
- * List all consumed idempotency keys for a claim.
- */
-export async function listIdempotencyKeysForClaimPersistent(
-  claimId: string,
-): Promise<{ key: string; actor: string; consumed_at: string }[]> {
-  const { data, error } = await supabase
-    .from('idempotency_keys')
-    .select('key, actor, consumed_at')
-    .eq('claim_id', claimId)
-    .order('consumed_at', { ascending: false });
-  if (error) throw error;
-  return data ?? [];
 }
 
 // ── Seed ──────────────────────────────────────────────────────

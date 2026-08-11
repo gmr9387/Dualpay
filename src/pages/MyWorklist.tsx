@@ -85,7 +85,7 @@ export default function MyWorklist() {
           .from('claims').select('claim_id, payload').in('claim_id', needed);
         const next = { ...meta };
         for (const r of rows ?? []) {
-          const p = (r.payload as any);
+          const p = (r.payload as Record<string, unknown> | null);
           next[r.claim_id] = { payer: p?.ohi_indicators?.[0]?.payer_name ?? '—' };
         }
         setMeta(next);
@@ -113,7 +113,7 @@ export default function MyWorklist() {
       const pendingAppeals = Array.from(appealsBySClaim.values())
         .filter(k => k === 'appeal_submitted').length;
       const recovered = (recoveryEvents ?? []).reduce(
-        (sum, r) => sum + Number(((r.payload as any)?.amount_cents) ?? 0), 0,
+        (sum, r) => sum + Number(((r.payload as Record<string, unknown> | null)?.amount_cents) ?? 0), 0,
       );
       setDashboard({
         openClaims: openClaims ?? 0,
@@ -353,7 +353,7 @@ function UnassignedPool({
       .map(c => ({
         claim_id: c.claim_id,
         total_billed_cents: Number(c.total_billed_cents ?? 0),
-        payer: ((c.payload as any)?.ohi_indicators?.[0]?.payer_name) ?? '—',
+        payer: ((c.payload as Record<string, unknown> | null)?.ohi_indicators?.[0]?.payer_name) ?? '—',
       }));
     setPool(items);
     setLoading(false);

@@ -12,8 +12,7 @@ import { recommendPlaybook } from '@/engine/playbooks';
 import { findRequirementsFor } from '@/engine/payer-requirements';
 import { nextBestAction, URGENCY_CLS, URGENCY_LABEL } from '@/engine/next-action';
 import { CATEGORY_LABEL } from '@/engine/denial-intelligence';
-import { logAppealEvent } from '@/data/operational-workflows';
-import { appendOpsEvent } from '@/lib/ops-events';
+import { logAppealEvent, makeIdempotencyKey } from '@/data/operational-workflows';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/hooks/use-org';
 import { useAuth } from '@/hooks/use-auth';
@@ -148,6 +147,7 @@ export default function AppealPacket() {
                   summary: `Appeal marked submitted to ${payerName} · ${formatCents(dispute)} in dispute (delivery is manual)`,
                   appealStatus: 'pending_response',
                   notes: rec?.playbook.appeal_strategy,
+                  idempotencyKey: makeIdempotencyKey('appeal'),
                 });
                 // Transition claim status so Executive ROI dashboards
                 // can count this claim as an active appeal.
@@ -304,7 +304,7 @@ export default function AppealPacket() {
 
 function PacketPicker({ claims }: { claims: Array<{ claim_id: string; intel: { payer_name: string; amount_at_risk_cents: number; denial_events: { length: number }[] | { length: number } } }> }) {
   // Pull claims with at least one denial event
-  const list = useMemo(() => (claims as any[]).filter(c => c.intel.denial_events.length > 0)
+  const list = useMemo(() => claims.filter(c => c.intel.denial_events.length > 0)
     .sort((a, b) => b.intel.amount_at_risk_cents - a.intel.amount_at_risk_cents).slice(0, 30), [claims]);
   return (
     <div className="flex flex-col h-full">
@@ -319,7 +319,7 @@ function PacketPicker({ claims }: { claims: Array<{ claim_id: string; intel: { p
                 <div className="grid grid-cols-[110px_1fr_140px_60px] gap-3 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/40">
                   <span>Claim</span><span>Payer</span><span className="text-right">At Risk</span><span></span>
                 </div>
-                {list.map((c: any) => (
+                {list.map((c) => (
                   <Link key={c.claim_id} to={`/packet/${c.claim_id}`} className="grid grid-cols-[110px_1fr_140px_60px] gap-3 items-center px-4 py-2.5 hover:bg-muted/40 text-[12.5px]">
                     <span className="font-mono font-semibold text-foreground">{c.claim_id}</span>
                     <span className="text-foreground truncate">{c.intel.payer_name}</span>

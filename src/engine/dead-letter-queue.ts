@@ -3,13 +3,14 @@
  *
  * Read & manage jobs that exhausted their retry budget.
  */
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { appendOpsEvent } from '@/lib/ops-events';
 import { QUEUE_EVENT } from './queue-manager';
 import { retryJob } from './retry-engine';
 import type { QueueJob, JobFailure } from '@/types/platform';
 
-const sb = supabase as any;
+const sb = supabase as ReturnType<typeof createClient>;
 const notify = () => window.dispatchEvent(new Event(QUEUE_EVENT));
 
 export async function listDeadLetterJobs(): Promise<QueueJob[]> {

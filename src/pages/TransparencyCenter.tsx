@@ -8,7 +8,7 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Loader2, ShieldCheck, FileSearch, Gavel, Building2, TrendingUp } from 'lucide-react';
-import { useClarityData, formatCents, formatCentsCompact } from '@/hooks/use-clarity-data';
+import { useClarityData, formatCents, formatCentsCompact, type ClarityClaim } from '@/hooks/use-clarity-data';
 import { PageHeader, KpiStrip, ScrollBody, Panel, RowLink, RecoverabilityBar } from '@/components/clarity/primitives';
 import { ReadinessBadge, InsufficientEvidence, BasisList, FactorRow, SectionLabel } from '@/components/clarity/transparency';
 import { scoreEvidenceReadiness } from '@/engine/evidence-readiness';
@@ -183,7 +183,7 @@ function Guarantee({ icon, text }: { icon: React.ReactNode; text: string }) {
   );
 }
 
-function topCategories(claims: any[]): Array<[string, number]> {
+function topCategories(claims: ClarityClaim[]): Array<[string, number]> {
   const list = claims ?? [];
   const map = new Map<string, number>();
   for (const c of list) for (const d of c.intel.denial_events) {

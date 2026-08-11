@@ -15,6 +15,7 @@ import {
   type AppealRecoveryCase,
   type AppealRecoveryState,
 } from '@/hooks/use-appeal-recovery-cases';
+import { makeIdempotencyKey } from '@/data/operational-workflows';
 import { Loader2, Plus, RefreshCw, ChevronRight, AlertCircle } from 'lucide-react';
 
 const STATE_LABEL: Record<AppealRecoveryState, string> = {
@@ -67,7 +68,8 @@ export default function GuidedRecovery() {
 
   async function handleAdvance(arc: AppealRecoveryCase, next: AppealRecoveryState) {
     setAdvancing(arc.id);
-    await advance(arc, next);
+    const idempotencyKey = makeIdempotencyKey('appeal');
+    await advance(arc, next, idempotencyKey);
     setAdvancing(null);
   }
 

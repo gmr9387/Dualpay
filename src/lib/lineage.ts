@@ -3,8 +3,11 @@
  * Persist remittance lines, claim-source links, and append-only lineage events,
  * and provide a single read API used by the lineage viewer.
  */
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { appendOpsEvent } from '@/lib/ops-events';
+const sb = supabase as ReturnType<typeof createClient>;
+
 
 type Json = string | number | boolean | null | { [k: string]: Json } | Json[];
 
@@ -96,7 +99,7 @@ export async function insertRemittanceLines(
   rows: InsertRemittanceLine[],
 ): Promise<RemittanceLineRow[]> {
   if (!rows.length) return [];
-  const { data, error } = await (supabase as any)
+  const { data, error } = await sb
     .from('remittance_lines')
     .insert(rows)
     .select('*');
@@ -114,7 +117,7 @@ export async function insertClaimSourceLinks(
   }>,
 ): Promise<void> {
   if (!links.length) return;
-  const { error } = await (supabase as any).from('claim_source_links').insert(links);
+  const { error } = await sb.from('claim_source_links').insert(links);
   if (error) console.error('[lineage] insertClaimSourceLinks', error);
 }
 
@@ -130,7 +133,7 @@ export async function appendLineageEvents(
   }>,
 ): Promise<void> {
   if (!events.length) return;
-  const { error } = await (supabase as any).from('recovery_lineage_events').insert(events);
+  const { error } = await sb.from('recovery_lineage_events').insert(events);
   if (error) { console.error('[lineage] appendLineageEvents', error); return; }
   // Audit summary event (single roll-up — avoid spamming ops_events).
   await appendOpsEvent({
@@ -161,9 +164,9 @@ export async function listLineageForClaim(claimId: string): Promise<{
   events: LineageEventRow[];
 }> {
   const [links, lines, events] = await Promise.all([
-    (supabase as any).from('claim_source_links').select('*').eq('claim_id', claimId).order('created_at', { ascending: true }),
-    (supabase as any).from('remittance_lines').select('*').eq('claim_id', claimId).order('created_at', { ascending: true }),
-    (supabase as any).from('recovery_lineage_events').select('*').eq('claim_id', claimId).order('created_at', { ascending: true }),
+    sb.from('claim_source_links').select('*').eq('claim_id', claimId).order('created_at', { ascending: true }),
+    sb.from('remittance_lines').select('*').eq('claim_id', claimId).order('created_at', { ascending: true }),
+    sb.from('recovery_lineage_events').select('*').eq('claim_id', claimId).order('created_at', { ascending: true }),
   ]);
   return {
     links: (links.data ?? []) as ClaimSourceLinkRow[],
@@ -173,7 +176,7 @@ export async function listLineageForClaim(claimId: string): Promise<{
 }
 
 export async function listRecentLineageEvents(limit = 200): Promise<LineageEventRow[]> {
-  const { data, error } = await (supabase as any)
+  const { data, error } = await sb
     .from('recovery_lineage_events')
     .select('*')
     .order('created_at', { ascending: false })
@@ -186,9 +189,9 @@ export async function getLineageSummary(): Promise<{
   total_lines: number; total_links: number; total_events: number;
 }> {
   const [a, b, c] = await Promise.all([
-    (supabase as any).from('remittance_lines').select('*', { count: 'exact', head: true }),
-    (supabase as any).from('claim_source_links').select('*', { count: 'exact', head: true }),
-    (supabase as any).from('recovery_lineage_events').select('*', { count: 'exact', head: true }),
+    sb.from('remittance_lines').select('*', { count: 'exact', head: true }),
+    sb.from('claim_source_links').select('*', { count: 'exact', head: true }),
+    sb.from('recovery_lineage_events').select('*', { count: 'exact', head: true }),
   ]);
   return {
     total_lines: a.count ?? 0,

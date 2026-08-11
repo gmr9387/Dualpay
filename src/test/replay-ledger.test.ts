@@ -106,7 +106,7 @@ describe('Replay Ledger — Persistence', () => {
       // Corrupt the ledger in memory (dev/test only)
       const ledgerEvents = listLedgerEventsInAppendOrder();
       if (ledgerEvents[1]) {
-        (ledgerEvents[1] as any).prev_event_hash = 'CORRUPTED_HASH';
+        (ledgerEvents[1] as Record<string, unknown>).prev_event_hash = 'CORRUPTED_HASH';
       }
       
       const result = await verifyLedgerIntegrity();
@@ -124,7 +124,7 @@ describe('Replay Ledger — Persistence', () => {
       // Corrupt the event hash (dev/test only)
       const ledgerEvents = listLedgerEventsInAppendOrder();
       if (ledgerEvents[1]) {
-        (ledgerEvents[1] as any).event_hash = 'CORRUPTED_EVENT_HASH';
+        (ledgerEvents[1] as Record<string, unknown>).event_hash = 'CORRUPTED_EVENT_HASH';
       }
       
       const result = await verifyLedgerIntegrity();
@@ -146,7 +146,7 @@ describe('Replay Ledger — Persistence', () => {
       const appended = await appendLedgerEvent(event);
       
       expect(() => {
-        (appended as any).event_id = 'MODIFIED';
+        (appended as Record<string, unknown>).event_id = 'MODIFIED';
       }).toThrow();
     });
   });

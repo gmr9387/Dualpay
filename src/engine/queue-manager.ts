@@ -4,11 +4,12 @@
  * Durable persistence layer for the background job queue.
  * All execution lives in worker-executor.ts; this file only mutates queue rows.
  */
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { appendOpsEvent } from '@/lib/ops-events';
 import type { QueueJob, QueueJobStatus, QueueJobType, JobRun, JobFailure } from '@/types/platform';
 
-const sb = supabase as any;
+const sb = supabase as ReturnType<typeof createClient>;
 
 export const QUEUE_EVENT = 'clarity-queue';
 const notify = () => window.dispatchEvent(new Event(QUEUE_EVENT));

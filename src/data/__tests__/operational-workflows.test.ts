@@ -109,6 +109,7 @@ describe('Operational Workflows (Phase 3A)', () => {
         summary: 'Appeal filed with Blue Cross',
         appealStatus: 'pending_response',
         notes: 'Submitted with complete documentation',
+        idempotencyKey: 'appeal:test-appeal-submitted-001',
       });
 
       expect(eventId).toBeDefined();
@@ -119,6 +120,7 @@ describe('Operational Workflows (Phase 3A)', () => {
         kind: 'appeal_responded',
         summary: 'Payer responded to appeal',
         payerResponse: 'Partial approval: $250 additional recovery',
+        idempotencyKey: 'appeal:test-appeal-responded-001',
       });
 
       expect(eventId).toBeDefined();
@@ -129,6 +131,7 @@ describe('Operational Workflows (Phase 3A)', () => {
         kind: 'appeal_resolved',
         summary: 'Appeal won',
         appealStatus: 'won',
+        idempotencyKey: 'appeal:test-appeal-resolved-001',
       });
 
       expect(eventId).toBeDefined();
@@ -141,6 +144,7 @@ describe('Operational Workflows (Phase 3A)', () => {
         recoveredFrom: 'Blue Cross',
         analystUserId: TEST_USER_ID,
         notes: 'Payment received via ACH',
+        idempotencyKey: 'recovery:idem-test-payer-001',
       });
 
       expect(eventId).toBeDefined();
@@ -152,13 +156,14 @@ describe('Operational Workflows (Phase 3A)', () => {
         amountCents: 100000,
         recoveredFrom: 'Patient',
         notes: 'Patient paid balance',
+        idempotencyKey: 'recovery:idem-test-patient-001',
       });
 
       expect(eventId).toBeDefined();
     });
 
     it('should log a writeoff', async () => {
-      const eventId = await logWriteOff(TEST_CLAIM_ID, TEST_ORG_ID, 'Unrecoverable - payer bankruptcy');
+      const eventId = await logWriteOff(TEST_CLAIM_ID, TEST_ORG_ID, 'Unrecoverable - payer bankruptcy', undefined, 'write_off:idem-test-writeoff-001');
 
       expect(eventId).toBeDefined();
     });
@@ -171,6 +176,7 @@ describe('Operational Workflows (Phase 3A)', () => {
           recoveryType: type,
           amountCents: type === 'writeoff' ? 0 : 100000,
           recoveredFrom: type === 'patient_payment' ? 'Patient' : 'Payer',
+          idempotencyKey: `recovery:idem-test-type-${type}`,
         });
 
         expect(eventId).toBeDefined();
@@ -402,6 +408,7 @@ describe('Operational Workflows (Phase 3A)', () => {
         recoveryType: 'adjustment',
         amountCents: 0,
         recoveredFrom: 'N/A',
+        idempotencyKey: 'recovery:idem-test-zero-001',
       });
       expect(eventId).toBeDefined();
     });
@@ -412,6 +419,7 @@ describe('Operational Workflows (Phase 3A)', () => {
         amountCents: -50000,
         recoveredFrom: 'Reversal',
         notes: 'Reversal of previous payment',
+        idempotencyKey: 'recovery:idem-test-negative-001',
       });
       expect(eventId).toBeDefined();
     });

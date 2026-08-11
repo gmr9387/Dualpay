@@ -131,5 +131,5 @@ export function parseX12(raw: string, _opts: ParseOptions = {}): ParsedX12 {
 }
 
 export function isLikelyX12(raw: string): boolean {
-  return /^[\s\uFEFF]*ISA[\*\|\^]/.test(raw);
+  return /^[\s\uFEFF]*ISA[*|^]/.test(raw);
 }

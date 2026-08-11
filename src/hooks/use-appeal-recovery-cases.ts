@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from './use-org';
 
@@ -58,17 +59,15 @@ export function canTransitionTo(from: AppealRecoveryState, to: AppealRecoverySta
   return TRANSITIONS[from]?.includes(to) ?? false;
 }
 
+// Table not yet in generated Database types; cast client to bypass type check.
+// Remove once `src/integrations/supabase/types.ts` is regenerated with appeal_recovery_cases.
+const db = supabase as ReturnType<typeof createClient>;
+
 export function useAppealRecoveryCases() {
   const { currentOrg } = useOrg();
   const [cases, setCases] = useState<AppealRecoveryCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Table not yet in generated Database types; cast client to bypass type check.
-  // Remove once `src/integrations/supabase/types.ts` is regenerated with appeal_recovery_cases.
-  const db = supabase as unknown as {
-    from: (t: string) => any;
-  };
 
   const load = useCallback(async () => {
     if (!currentOrg) { setCases([]); setLoading(false); return; }
@@ -118,14 +117,70 @@ export function useAppealRecoveryCases() {
   const advance = useCallback(async (
     arc: AppealRecoveryCase,
     nextState: AppealRecoveryState,
+    idempotencyKey: string,
     extra?: AppealRecoveryCaseUpdate
   ): Promise<AppealRecoveryCase | null> => {
+    if (!currentOrg) return null;
+
     if (!canTransitionTo(arc.current_state, nextState)) {
       setError(`Cannot transition from ${arc.current_state} → ${nextState}`);
       return null;
     }
-    return update(arc.id, { current_state: nextState, ...extra });
-  }, [update]);
+
+    if (!idempotencyKey) {
+      setError('advance: idempotencyKey is required');
+      return null;
+    }
+
+    // Phase 5A: route through atomic RPC that now includes ops_events insert
+    // and p_extra_patch application in the same transaction.
+    // The separate post-RPC client-side UPDATE is removed; extra fields are
+    // forwarded as p_extra_patch so they are committed atomically.
+    const extraPatch: Record<string, unknown> = {};
+    if (extra) {
+      if (typeof extra.recovered_amount_cents === 'number') {
+        extraPatch.recovered_amount_cents = extra.recovered_amount_cents;
+      }
+      if (typeof extra.payer_response_status === 'string') {
+        extraPatch.payer_response_status = extra.payer_response_status;
+      }
+      if (typeof extra.packet_id === 'string') {
+        extraPatch.packet_id = extra.packet_id;
+      }
+    }
+
+    const { data: rpcData, error: rpcErr } = await db.rpc('rpc_advance_appeal_case', {
+      p_idempotency_key: idempotencyKey,
+      p_case_id:         arc.id,
+      p_org_id:          currentOrg.org_id,
+      p_actor:           arc.assigned_to_user_id ?? 'unknown',
+      p_expected_state:  arc.current_state,
+      p_next_state:      nextState,
+      p_extra_patch:     Object.keys(extraPatch).length > 0 ? extraPatch : null,
+      p_event_kind:      'appeal_submitted',
+      p_event_summary:   `Appeal case advanced: ${arc.current_state} → ${nextState}`,
+      p_event_payload:   { from_state: arc.current_state, to_state: nextState },
+      p_claim_id:        arc.claim_id,
+    } as never);
+
+    if (rpcErr) {
+      setError(rpcErr.message);
+      return null;
+    }
+
+    const rpc = rpcData as {
+      already_consumed: boolean;
+      result_id: string;
+      new_state: string;
+      event_id: string | null;
+    };
+
+    await load();
+
+    // Return the refreshed record; fall back to a synthetic object if load is async.
+    const refreshed = cases.find((c) => c.id === arc.id);
+    return refreshed ?? { ...arc, current_state: rpc.new_state as AppealRecoveryState };
+  }, [currentOrg, cases, load]);
 
   return { cases, loading, error, reload: load, create, update, advance };
 }

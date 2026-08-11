@@ -2,6 +2,7 @@
  * Phase 9 — Import Exceptions persistence + correction/retry workflow.
  * Reuses validateRows (no duplicate validation engine) + rowToClaim.
  */
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { appendOpsEvent } from '@/lib/ops-events';
 import { saveClaim } from '@/data/repository';
@@ -9,6 +10,7 @@ import { validateRows } from '@/engine/import-validation';
 import { rowToClaim } from '@/engine/import-to-claim';
 import type { ImportException, ExceptionStatus, ExceptionSeverity } from '@/types/exceptions';
 import type {
+
   CanonicalField,
   FieldMapping,
   ImportBatch,
@@ -16,6 +18,7 @@ import type {
   ParsedRow,
   RowIssue,
 } from '@/types/import';
+const sb = supabase as ReturnType<typeof createClient>;
 
 type Json = unknown;
 const J = <T,>(v: T) => v as unknown as Json;
@@ -23,7 +26,7 @@ const J = <T,>(v: T) => v as unknown as Json;
 export const EXCEPTION_EVENT = 'clarity-import-exceptions';
 const emit = () => window.dispatchEvent(new Event(EXCEPTION_EVENT));
 
-function fromRow(r: any): ImportException {
+function fromRow(r: Record<string, unknown>): ImportException {
   return {
     exception_id: r.exception_id,
     batch_id: r.batch_id,
@@ -69,7 +72,7 @@ export async function persistExceptions(batch: ImportBatch, rows: ParsedRow[]): 
     };
   });
 
-  const { error } = await (supabase as any)
+  const { error } = await sb
     .from('import_exceptions')
     .upsert(payload, { onConflict: 'exception_id' });
   if (error) throw error;
@@ -88,7 +91,7 @@ export async function listExceptions(filter?: {
   status?: ExceptionStatus;
   severity?: ExceptionSeverity;
 }): Promise<ImportException[]> {
-  let q = (supabase as any).from('import_exceptions').select('*').order('created_at', { ascending: false });
+  let q = sb.from('import_exceptions').select('*').order('created_at', { ascending: false });
   if (filter?.batch_id) q = q.eq('batch_id', filter.batch_id);
   if (filter?.status) q = q.eq('status', filter.status);
   if (filter?.severity) q = q.eq('severity', filter.severity);
@@ -98,7 +101,7 @@ export async function listExceptions(filter?: {
 }
 
 export async function getException(id: string): Promise<ImportException | null> {
-  const { data, error } = await (supabase as any)
+  const { data, error } = await sb
     .from('import_exceptions').select('*').eq('exception_id', id).maybeSingle();
   if (error) throw error;
   return data ? fromRow(data) : null;
@@ -144,7 +147,7 @@ export async function correctException(
     status: (clean ? 'corrected' : 'open') as ExceptionStatus,
     updated_at: new Date().toISOString(),
   };
-  const { data, error } = await (supabase as any)
+  const { data, error } = await sb
     .from('import_exceptions')
     .update(update)
     .eq('exception_id', exc.exception_id)
@@ -162,7 +165,7 @@ export async function correctException(
 }
 
 export async function ignoreException(id: string): Promise<void> {
-  const { error } = await (supabase as any)
+  const { error } = await sb
     .from('import_exceptions')
     .update({
       status: 'ignored',
@@ -200,7 +203,7 @@ export async function importException(
   const { claim } = rowToClaim(pseudo, source, exc.batch_id);
   await saveClaim(claim);
 
-  const { error } = await (supabase as any)
+  const { error } = await sb
     .from('import_exceptions')
     .update({
       status: 'imported',

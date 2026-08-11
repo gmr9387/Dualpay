@@ -326,6 +326,6 @@ describe('outcome_recorded lineage event shape', () => {
     };
     expect(event.org_id).toBeTruthy();
     expect(event.event_type).toBe('outcome_recorded');
-    expect((event.payload as any).recovered_cents).toBeGreaterThan(0);
+    expect((event.payload as Record<string, unknown>).recovered_cents).toBeGreaterThan(0);
   });
 });

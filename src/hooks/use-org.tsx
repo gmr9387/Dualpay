@@ -39,7 +39,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       .select('role, org_id, organizations(name, org_id)')
       .eq('user_id', user.id);
     if (error) { console.error('[org] load failed', error.message); setLoading(false); return; }
-    const list: Org[] = (data ?? []).map((r: any) => ({
+    const list: Org[] = (data ?? []).map((r: Record<string, unknown>) => ({
       org_id: r.org_id,
       name: r.organizations?.name ?? 'Untitled Org',
       role: r.role as OrgRole,
@@ -84,4 +84,5 @@ export function OrgProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useOrg() { return useContext(Ctx); }

@@ -10,13 +10,7 @@ export default function CommandCenter() {
   const { data: claims, isLoading } = useClarityData();
   const { currentOrg, loading: orgLoading } = useOrg();
 
-  // Role-based landing: analysts and viewers get their worklist, not the exec KPIs.
-  if (!orgLoading && currentOrg) {
-    if (currentOrg.role === 'analyst') return <Navigate to="/worklist" replace />;
-    if (currentOrg.role === 'viewer')  return <Navigate to="/today"    replace />;
-  }
-
-
+  // All hooks must be declared before any conditional returns (Rules of Hooks).
   const kpis = useMemo(() => {
     if (!claims) return null;
     const totalBilled = claims.reduce((s, c) => s + c.total_billed, 0);
@@ -52,6 +46,12 @@ export default function CommandCenter() {
       })
       .slice(0, 6);
   }, [claims]);
+
+  // Role-based landing: analysts and viewers get their worklist, not the exec KPIs.
+  if (!orgLoading && currentOrg) {
+    if (currentOrg.role === 'analyst') return <Navigate to="/worklist" replace />;
+    if (currentOrg.role === 'viewer')  return <Navigate to="/today"    replace />;
+  }
 
   if (isLoading || !kpis) {
     return (

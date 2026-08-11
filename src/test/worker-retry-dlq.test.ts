@@ -180,7 +180,7 @@ describe('worker retry → DLQ lifecycle', () => {
 describe('dead_letter → authorized retry → success', () => {
   it('revived dead-letter job resets attempts and returns to queued', () => {
     // Start from a dead-lettered state.
-    let job = makeJob({ status: 'dead_letter', attempts: 3, last_error: 'exhausted' });
+    const job = makeJob({ status: 'dead_letter', attempts: 3, last_error: 'exhausted' });
 
     const revived = reviveDeadLetter(job);
     expect(revived.status).toBe('queued');

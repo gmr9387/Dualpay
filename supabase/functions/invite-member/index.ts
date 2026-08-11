@@ -3,7 +3,7 @@
 // stamps `invited_org_id` + `invited_role` in user metadata so the
 // `handle_new_user_org` trigger routes the new auth user into that org.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { corsHeaders } from '../_shared/cors.ts';
 
 const ROLES = new Set(['admin', 'manager', 'analyst', 'viewer']);
 

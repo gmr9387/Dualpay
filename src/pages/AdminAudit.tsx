@@ -45,8 +45,9 @@ function AdminAuditInner() {
       setLast(r);
       downloadResult(r);
       toast.success(`Exported ${r.rowCount} rows`);
-    } catch (e: any) {
-      toast.error(e.message ?? 'Export failed');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Export failed';
+      toast.error(msg);
     } finally {
       setRunning(false);
     }
