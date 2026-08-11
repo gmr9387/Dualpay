@@ -12,8 +12,7 @@ import { recommendPlaybook } from '@/engine/playbooks';
 import { findRequirementsFor } from '@/engine/payer-requirements';
 import { nextBestAction, URGENCY_CLS, URGENCY_LABEL } from '@/engine/next-action';
 import { CATEGORY_LABEL } from '@/engine/denial-intelligence';
-import { logAppealEvent } from '@/data/operational-workflows';
-import { appendOpsEvent } from '@/lib/ops-events';
+import { logAppealEvent, makeIdempotencyKey } from '@/data/operational-workflows';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/hooks/use-org';
 import { useAuth } from '@/hooks/use-auth';
@@ -148,6 +147,7 @@ export default function AppealPacket() {
                   summary: `Appeal marked submitted to ${payerName} · ${formatCents(dispute)} in dispute (delivery is manual)`,
                   appealStatus: 'pending_response',
                   notes: rec?.playbook.appeal_strategy,
+                  idempotencyKey: makeIdempotencyKey('appeal'),
                 });
                 // Transition claim status so Executive ROI dashboards
                 // can count this claim as an active appeal.

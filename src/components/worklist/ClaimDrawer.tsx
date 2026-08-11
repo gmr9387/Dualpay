@@ -210,7 +210,13 @@ export function ClaimDrawer({ claimId, orgId, userId, onClose, onChanged }: Prop
                 <AppealPanel
                   busy={busy}
                   onSubmit={(params) =>
-                    wrap(() => logAppealEvent(claimId!, orgId, params), `Appeal: ${params.summary}`)
+                    wrap(
+                      () => logAppealEvent(claimId!, orgId, {
+                        ...params,
+                        idempotencyKey: makeIdempotencyKey('appeal'),
+                      }),
+                      `Appeal: ${params.summary}`,
+                    )
                   }
                 />
                 <TimelineView

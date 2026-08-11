@@ -109,6 +109,7 @@ describe('Operational Workflows (Phase 3A)', () => {
         summary: 'Appeal filed with Blue Cross',
         appealStatus: 'pending_response',
         notes: 'Submitted with complete documentation',
+        idempotencyKey: 'appeal:test-appeal-submitted-001',
       });
 
       expect(eventId).toBeDefined();
@@ -119,6 +120,7 @@ describe('Operational Workflows (Phase 3A)', () => {
         kind: 'appeal_responded',
         summary: 'Payer responded to appeal',
         payerResponse: 'Partial approval: $250 additional recovery',
+        idempotencyKey: 'appeal:test-appeal-responded-001',
       });
 
       expect(eventId).toBeDefined();
@@ -129,6 +131,7 @@ describe('Operational Workflows (Phase 3A)', () => {
         kind: 'appeal_resolved',
         summary: 'Appeal won',
         appealStatus: 'won',
+        idempotencyKey: 'appeal:test-appeal-resolved-001',
       });
 
       expect(eventId).toBeDefined();
