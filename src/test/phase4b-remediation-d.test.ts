@@ -277,12 +277,6 @@ describe('Legacy helper absence — no deleted symbols in production source', ()
     'listIdempotencyKeysForClaimPersistent',
   ];
 
-  it('main.tsx no longer references deleted persistent helper names', async () => {
-    const { readFile } = await import('fs/promises');
-    const src = await readFile('src/main.tsx', 'utf-8');
-    expect(src).not.toContain('isIdempotencyKeyConsumedPersistent');
-  });
-
   for (const symbol of DELETED_SYMBOLS) {
     it(`"${symbol}" does not appear in non-test production files`, async () => {
       const { readFile } = await import('fs/promises');
