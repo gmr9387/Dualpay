@@ -278,6 +278,266 @@ describe('advancePaymentState — UNIT', () => {
   });
 });
 
+// ── advanceAppealCase (UNIT) ─────────────────────────────────
+// Phase 5A: tests for the new single-authoritative appeal path.
+
+describe('advanceAppealCase — UNIT', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('throws when idempotencyKey is missing', async () => {
+    const { advanceAppealCase } = await import('@/data/operational-workflows');
+    await expect(
+      advanceAppealCase({
+        idempotencyKey: '',
+        orgId: 'org-uuid',
+        eventKind: 'appeal_submitted',
+        eventSummary: 'Appeal submitted',
+        claimId: 'CLM-001',
+      }),
+    ).rejects.toThrow('idempotencyKey is required');
+  });
+
+  it('routes to rpc_advance_appeal_case with event metadata', async () => {
+    const spy = mockRpc({
+      data: {
+        already_consumed: false,
+        result_id: 'EV-ev-abc123',
+        new_state: null,
+        event_id: 'ev-abc123',
+      },
+      error: null,
+    });
+    const { advanceAppealCase } = await import('@/data/operational-workflows');
+
+    const key = 'appeal:idem-advance-001';
+    const result = await advanceAppealCase({
+      idempotencyKey: key,
+      orgId: 'org-uuid',
+      eventKind: 'appeal_submitted',
+      eventSummary: 'Appeal filed with Blue Cross',
+      eventPayload: { appeal_status: 'pending_response' },
+      claimId: 'CLM-001',
+    });
+
+    expect(result.alreadyConsumed).toBe(false);
+    expect(result.resultId).toBe('EV-ev-abc123');
+    expect(result.eventId).toBe('ev-abc123');
+    expect(spy).toHaveBeenCalledWith(
+      'rpc_advance_appeal_case',
+      expect.objectContaining({
+        p_idempotency_key: key,
+        p_event_kind:      'appeal_submitted',
+        p_event_summary:   'Appeal filed with Blue Cross',
+        p_org_id:          'org-uuid',
+        p_claim_id:        'CLM-001',
+      }),
+    );
+  });
+
+  it('passes case_id and next_state for state-transition path', async () => {
+    const spy = mockRpc({
+      data: {
+        already_consumed: false,
+        result_id: 'ARC-case-uuid-appeal_filed',
+        new_state: 'appeal_filed',
+        event_id: 'ev-xyz',
+      },
+      error: null,
+    });
+    const { advanceAppealCase } = await import('@/data/operational-workflows');
+
+    const key = 'appeal:idem-transition-001';
+    const result = await advanceAppealCase({
+      idempotencyKey: key,
+      caseId: 'case-uuid',
+      orgId: 'org-uuid',
+      expectedState: 'denied',
+      nextState: 'appeal_filed',
+      eventKind: 'appeal_submitted',
+      eventSummary: 'Case advanced to appeal_filed',
+      claimId: 'CLM-001',
+    });
+
+    expect(result.newState).toBe('appeal_filed');
+    expect(result.resultId).toBe('ARC-case-uuid-appeal_filed');
+    expect(spy).toHaveBeenCalledWith(
+      'rpc_advance_appeal_case',
+      expect.objectContaining({
+        p_case_id:        'case-uuid',
+        p_expected_state: 'denied',
+        p_next_state:     'appeal_filed',
+      }),
+    );
+  });
+
+  it('returns already_consumed result without duplicate mutation', async () => {
+    const originalResultId = 'ARC-case-uuid-original';
+    mockRpc({
+      data: {
+        already_consumed: true,
+        result_id: originalResultId,
+        new_state: 'appeal_filed',
+        event_id: null,
+      },
+      error: null,
+    });
+    const { advanceAppealCase } = await import('@/data/operational-workflows');
+
+    const result = await advanceAppealCase({
+      idempotencyKey: 'appeal:idem-consumed',
+      caseId: 'case-uuid',
+      orgId: 'org-uuid',
+      expectedState: 'denied',
+      nextState: 'appeal_filed',
+      eventKind: 'appeal_submitted',
+      eventSummary: 'Duplicate',
+      claimId: 'CLM-001',
+    });
+
+    expect(result.alreadyConsumed).toBe(true);
+    expect(result.resultId).toBe(originalResultId);
+  });
+
+  it('propagates RPC error to caller', async () => {
+    mockRpc({ data: null, error: { message: 'FORBIDDEN' } });
+    const { advanceAppealCase } = await import('@/data/operational-workflows');
+
+    await expect(
+      advanceAppealCase({
+        idempotencyKey: 'appeal:idem-error',
+        orgId: 'org-uuid',
+        eventKind: 'appeal_submitted',
+        eventSummary: 'Should fail',
+        claimId: 'CLM-001',
+      }),
+    ).rejects.toBeTruthy();
+  });
+
+  it('duplicate call with same key returns original result_id (application honours DB response)', async () => {
+    const spy = vi.spyOn(supabase, 'rpc' as never)
+      .mockResolvedValueOnce({
+        data: { already_consumed: false, result_id: 'ARC-first', new_state: 'appeal_filed', event_id: 'ev-1' },
+        error: null,
+      } as never)
+      .mockResolvedValueOnce({
+        data: { already_consumed: true, result_id: 'ARC-first', new_state: 'appeal_filed', event_id: null },
+        error: null,
+      } as never);
+
+    const { advanceAppealCase } = await import('@/data/operational-workflows');
+    const key = 'appeal:idem-dupe';
+
+    const r1 = await advanceAppealCase({
+      idempotencyKey: key, caseId: 'c', orgId: 'o',
+      expectedState: 'denied', nextState: 'appeal_filed',
+      eventKind: 'appeal_submitted', eventSummary: 'First', claimId: 'CLM-001',
+    });
+    const r2 = await advanceAppealCase({
+      idempotencyKey: key, caseId: 'c', orgId: 'o',
+      expectedState: 'denied', nextState: 'appeal_filed',
+      eventKind: 'appeal_submitted', eventSummary: 'First', claimId: 'CLM-001',
+    });
+
+    expect(r1.resultId).toBe('ARC-first');
+    expect(r2.resultId).toBe('ARC-first');
+    expect(r2.alreadyConsumed).toBe(true);
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+
+  it('different keys produce independent RPC calls', async () => {
+    const spy = vi.spyOn(supabase, 'rpc' as never)
+      .mockResolvedValueOnce({
+        data: { already_consumed: false, result_id: 'ARC-A', new_state: 'appeal_filed', event_id: 'ev-A' },
+        error: null,
+      } as never)
+      .mockResolvedValueOnce({
+        data: { already_consumed: false, result_id: 'ARC-B', new_state: 'submitted', event_id: 'ev-B' },
+        error: null,
+      } as never);
+
+    const { advanceAppealCase } = await import('@/data/operational-workflows');
+
+    const rA = await advanceAppealCase({
+      idempotencyKey: 'appeal:idem-A', caseId: 'c1', orgId: 'o',
+      expectedState: 'denied', nextState: 'appeal_filed',
+      eventKind: 'appeal_submitted', eventSummary: 'A', claimId: 'CLM-001',
+    });
+    const rB = await advanceAppealCase({
+      idempotencyKey: 'appeal:idem-B', caseId: 'c2', orgId: 'o',
+      expectedState: 'appeal_filed', nextState: 'submitted',
+      eventKind: 'appeal_responded', eventSummary: 'B', claimId: 'CLM-002',
+    });
+
+    expect(rA.resultId).toBe('ARC-A');
+    expect(rB.resultId).toBe('ARC-B');
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+});
+
+// ── logAppealEvent — routes through advanceAppealCase (UNIT) ──
+
+describe('logAppealEvent — routes through advanceAppealCase (UNIT)', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('throws when idempotencyKey is missing', async () => {
+    const { logAppealEvent } = await import('@/data/operational-workflows');
+    await expect(
+      logAppealEvent('CLM-001', 'org-uuid', {
+        kind: 'appeal_submitted',
+        summary: 'Appeal',
+        idempotencyKey: '',
+      }),
+    ).rejects.toThrow('idempotencyKey is required');
+  });
+
+  it('routes to rpc_advance_appeal_case with p_case_id = null', async () => {
+    const spy = mockRpc({
+      data: {
+        already_consumed: false,
+        result_id: 'EV-ev-log-001',
+        new_state: null,
+        event_id: 'ev-log-001',
+      },
+      error: null,
+    });
+    const { logAppealEvent } = await import('@/data/operational-workflows');
+
+    const eventId = await logAppealEvent('CLM-001', 'org-uuid', {
+      kind: 'appeal_submitted',
+      summary: 'Appeal filed',
+      appealStatus: 'pending_response',
+      idempotencyKey: 'appeal:idem-log-001',
+    });
+
+    expect(eventId).toBe('EV-ev-log-001');
+    expect(spy).toHaveBeenCalledWith(
+      'rpc_advance_appeal_case',
+      expect.objectContaining({
+        p_idempotency_key: 'appeal:idem-log-001',
+        p_case_id:         null,
+        p_event_kind:      'appeal_submitted',
+        p_event_summary:   'Appeal filed',
+        p_claim_id:        'CLM-001',
+      }),
+    );
+  });
+
+  it('does NOT call appendOpsEvent directly (no direct ops_events insert)', async () => {
+    // Verify at source level that logAppealEvent delegates to advanceAppealCase,
+    // not appendOpsEvent.
+    const { readFile } = await import('fs/promises');
+    const src = await readFile('src/data/operational-workflows.ts', 'utf-8');
+
+    // logAppealEvent body must reference advanceAppealCase
+    const fnStart = src.indexOf('export async function logAppealEvent');
+    const fnEnd   = src.indexOf('\nexport ', fnStart + 1);
+    const fnBody  = src.slice(fnStart, fnEnd > -1 ? fnEnd : undefined);
+
+    expect(fnBody).toContain('advanceAppealCase');
+    expect(fnBody).not.toContain('appendOpsEvent');
+  });
+});
+
 // ── canTransition — in-memory UI cache (UNIT) ─────────────────
 
 describe('canTransition — in-memory UI cache (UNIT)', () => {
@@ -326,7 +586,7 @@ describe('canTransition — in-memory UI cache (UNIT)', () => {
 
 // ── DB TESTS — NOT EXECUTED (environment Supabase/Postgres unavailable) ──────
 //
-// These are structured DB/concurrency specifications for Phase 4B Remediation B.
+// These are structured DB/concurrency specifications for Phase 4B/5A.
 // They intentionally remain skipped in this environment and must be run against
 // a live PostgreSQL/Supabase runtime.
 
@@ -367,15 +627,62 @@ describe.skip('DB — rpc_log_write_off — first-use reservation (NOT EXECUTED)
   it('unauthorized caller cannot read another tenant idempotent result', async () => {});
 });
 
+// Phase 5A: rpc_advance_appeal_case now atomically performs:
+//   idempotency reservation → state advance → extra_patch → ops_events INSERT → result commit.
+// The UNIT tests above cover the application-layer contract.
+// These DB tests specify the behaviour that must hold at the PostgreSQL layer and remain
+// skipped until a live Supabase/Postgres connection is available.
 describe.skip('DB — rpc_advance_appeal_case — first-use reservation (NOT EXECUTED)', () => {
-  it('first request succeeds and performs one optimistic transition', async () => {});
-  it('sequential duplicate with same key returns original result_id', async () => {});
-  it('concurrent same-key requests return same result_id', async () => {});
-  it('exactly one state transition is committed under concurrent same-key calls', async () => {});
-  it('stale/different expected state remains rejected', async () => {});
-  it('same key with different payload is rejected', async () => {});
-  it('same key with different operation is rejected', async () => {});
-  it('rollback after reservation does not leave key stuck; retry succeeds', async () => {});
-  it('cross-tenant key reuse is rejected', async () => {});
-  it('unauthorized caller cannot read another tenant idempotent result', async () => {});
+  // Requires: appeal_recovery_cases row in state 'denied', valid org + user session.
+  it('first request succeeds and performs one optimistic transition', async () => {
+    // Assert: appeal_recovery_cases.current_state updated to p_next_state.
+    // Assert: exactly one ops_events row with matching kind / claim_id / org_id.
+    // Assert: idempotency_keys row with result_id set.
+    // Assert: return { already_consumed: false, result_id, new_state, event_id }.
+  });
+  it('sequential duplicate with same key returns original result_id', async () => {
+    // Assert: second call with same key returns { already_consumed: true, same result_id }.
+    // Assert: no second ops_events row created.
+    // Assert: appeal_recovery_cases.current_state unchanged (already advanced).
+  });
+  it('concurrent same-key requests return same result_id', async () => {
+    // Requires two concurrent Postgres sessions.
+    // Assert: exactly one of them commits the reservation; the other returns already_consumed.
+  });
+  it('exactly one state transition is committed under concurrent same-key calls', async () => {
+    // Assert: COUNT(*) FROM appeal_recovery_cases WHERE id = p_case_id is 1 row.
+    // Assert: current_state = p_next_state (not still in p_expected_state).
+  });
+  it('exactly one ops_events row is created for concurrent same-key calls', async () => {
+    // Assert: COUNT(*) FROM ops_events WHERE ... = 1.
+  });
+  it('stale/different expected state remains rejected', async () => {
+    // Assert: STATE_CONFLICT exception when case is already in p_next_state.
+  });
+  it('same key with different payload is rejected', async () => {
+    // Assert: IDEMPOTENCY_CONFLICT exception.
+  });
+  it('same key with different operation is rejected', async () => {
+    // Assert: IDEMPOTENCY_CONFLICT exception.
+  });
+  it('rollback after reservation does not leave key stuck; retry succeeds', async () => {
+    // Force transaction abort after reservation but before commit.
+    // Assert: idempotency_keys row with result_id IS NULL is rolled back.
+    // Assert: retry with same key executes mutation successfully.
+  });
+  it('cross-tenant key reuse is rejected', async () => {
+    // Assert: FORBIDDEN exception when p_org_id differs from original key org_id.
+  });
+  it('unauthorized caller cannot read another tenant idempotent result', async () => {
+    // Assert: FORBIDDEN exception when caller is not an org member.
+  });
+  it('p_extra_patch columns are applied atomically with state transition', async () => {
+    // Assert: recovered_amount_cents updated in same transaction as current_state.
+    // Assert: if transaction is aborted, neither state nor patch is committed.
+  });
+  it('event-only path (p_case_id NULL) creates ops_events without touching appeal_recovery_cases', async () => {
+    // Assert: ops_events row created.
+    // Assert: appeal_recovery_cases unchanged.
+    // Assert: result_id starts with "EV-".
+  });
 });

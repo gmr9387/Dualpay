@@ -132,7 +132,23 @@ export function useAppealRecoveryCases() {
       return null;
     }
 
-    // Phase 4B: route through atomic RPC instead of a bare client-side update.
+    // Phase 5A: route through atomic RPC that now includes ops_events insert
+    // and p_extra_patch application in the same transaction.
+    // The separate post-RPC client-side UPDATE is removed; extra fields are
+    // forwarded as p_extra_patch so they are committed atomically.
+    const extraPatch: Record<string, unknown> = {};
+    if (extra) {
+      if (typeof extra.recovered_amount_cents === 'number') {
+        extraPatch.recovered_amount_cents = extra.recovered_amount_cents;
+      }
+      if (typeof extra.payer_response_status === 'string') {
+        extraPatch.payer_response_status = extra.payer_response_status;
+      }
+      if (typeof extra.packet_id === 'string') {
+        extraPatch.packet_id = extra.packet_id;
+      }
+    }
+
     const { data: rpcData, error: rpcErr } = await db.rpc('rpc_advance_appeal_case', {
       p_idempotency_key: idempotencyKey,
       p_case_id:         arc.id,
@@ -140,6 +156,11 @@ export function useAppealRecoveryCases() {
       p_actor:           arc.assigned_to_user_id ?? 'unknown',
       p_expected_state:  arc.current_state,
       p_next_state:      nextState,
+      p_extra_patch:     Object.keys(extraPatch).length > 0 ? extraPatch : null,
+      p_event_kind:      'appeal_submitted',
+      p_event_summary:   `Appeal case advanced: ${arc.current_state} → ${nextState}`,
+      p_event_payload:   { from_state: arc.current_state, to_state: nextState },
+      p_claim_id:        arc.claim_id,
     } as never);
 
     if (rpcErr) {
@@ -147,19 +168,12 @@ export function useAppealRecoveryCases() {
       return null;
     }
 
-    const rpc = rpcData as { already_consumed: boolean; result_id: string; new_state: string };
-
-    // If extra fields need updating (e.g. recovered_amount_cents) apply them via a regular update.
-    if (extra && Object.keys(extra).length > 0) {
-      const { error: patchErr } = await db
-        .from('appeal_recovery_cases')
-        .update(extra as never)
-        .eq('id', arc.id);
-      if (patchErr) {
-        setError(patchErr.message);
-        return null;
-      }
-    }
+    const rpc = rpcData as {
+      already_consumed: boolean;
+      result_id: string;
+      new_state: string;
+      event_id: string | null;
+    };
 
     await load();
 

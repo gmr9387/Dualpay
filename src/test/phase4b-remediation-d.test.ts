@@ -296,3 +296,81 @@ describe('Legacy helper absence — no deleted symbols in production source', ()
     });
   }
 });
+
+// ── Phase 5A: appeal atomicity contract (source-level) ───────
+
+describe('Phase 5A — appeal atomicity contract', () => {
+  it('use-appeal-recovery-cases passes p_event_kind to rpc_advance_appeal_case', async () => {
+    const { readFile } = await import('fs/promises');
+    const src = await readFile('src/hooks/use-appeal-recovery-cases.ts', 'utf-8');
+    expect(src).toContain('p_event_kind');
+  });
+
+  it('use-appeal-recovery-cases passes p_event_summary to rpc_advance_appeal_case', async () => {
+    const { readFile } = await import('fs/promises');
+    const src = await readFile('src/hooks/use-appeal-recovery-cases.ts', 'utf-8');
+    expect(src).toContain('p_event_summary');
+  });
+
+  it('use-appeal-recovery-cases passes p_extra_patch to rpc_advance_appeal_case', async () => {
+    const { readFile } = await import('fs/promises');
+    const src = await readFile('src/hooks/use-appeal-recovery-cases.ts', 'utf-8');
+    expect(src).toContain('p_extra_patch');
+  });
+
+  it('use-appeal-recovery-cases no longer contains a separate post-RPC appeal_recovery_cases update', async () => {
+    const { readFile } = await import('fs/promises');
+    const src = await readFile('src/hooks/use-appeal-recovery-cases.ts', 'utf-8');
+    // The old post-RPC split UPDATE pattern used .from('appeal_recovery_cases').update(extra)
+    // in a separate branch after the RPC call. Verify it is absent.
+    expect(src).not.toMatch(/\.from\('appeal_recovery_cases'\)[\s\S]{0,40}\.update\(extra/);
+  });
+
+  it('logAppealEvent in operational-workflows does not call appendOpsEvent directly', async () => {
+    const { readFile } = await import('fs/promises');
+    const src = await readFile('src/data/operational-workflows.ts', 'utf-8');
+    // Locate the logAppealEvent function body
+    const fnStart = src.indexOf('export async function logAppealEvent');
+    const fnEnd   = src.indexOf('\nexport ', fnStart + 1);
+    const fnBody  = src.slice(fnStart, fnEnd > -1 ? fnEnd : undefined);
+    expect(fnBody).not.toContain('appendOpsEvent');
+  });
+
+  it('logAppealEvent now requires an idempotencyKey parameter', async () => {
+    const { readFile } = await import('fs/promises');
+    const src = await readFile('src/data/operational-workflows.ts', 'utf-8');
+    const fnStart = src.indexOf('export async function logAppealEvent');
+    const fnEnd   = src.indexOf('\nexport ', fnStart + 1);
+    const fnBody  = src.slice(fnStart, fnEnd > -1 ? fnEnd : undefined);
+    expect(fnBody).toContain('idempotencyKey');
+    expect(fnBody).toContain('idempotencyKey is required');
+  });
+
+  it('Phase 5A migration exists and contains the new CREATE OR REPLACE FUNCTION', async () => {
+    const { readFile } = await import('fs/promises');
+    const sql = await readFile(
+      'supabase/migrations/20260812000100_phase5a_appeal_atomicity.sql',
+      'utf-8',
+    );
+    expect(sql).toContain('CREATE OR REPLACE FUNCTION public.rpc_advance_appeal_case');
+    expect(sql).toContain('p_event_kind');
+    expect(sql).toContain('p_event_summary');
+    expect(sql).toContain('INSERT INTO public.ops_events');
+    expect(sql).toContain('SECURITY DEFINER');
+    expect(sql).toContain('SET search_path = public');
+  });
+
+  it('Phase 5A migration does not modify historical migrations', async () => {
+    // Verify the new migration file is at a later timestamp than the last Phase 4B migration.
+    const { readdir } = await import('fs/promises');
+    const files = (await readdir('supabase/migrations'))
+      .filter(f => f.endsWith('.sql'))
+      .sort();
+    const phase4bLast = files.filter(f => f.startsWith('20260811')).sort().at(-1);
+    const phase5a = files.find(f => f.startsWith('20260812'));
+    expect(phase5a).toBeDefined();
+    if (phase4bLast && phase5a) {
+      expect(phase5a > phase4bLast).toBe(true);
+    }
+  });
+});

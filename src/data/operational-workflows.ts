@@ -1,9 +1,9 @@
 /**
- * Operational Workflows — Phase 3A Foundation
+ * Operational Workflows — Phase 3A Foundation / Phase 5A Appeal Atomicity
  *
  * Persistence layer for:
  * - Assignment workflow (assign, reassign, update priority/due date)
- * - Appeal lifecycle (log appeal events via ops_events)
+ * - Appeal lifecycle (Phase 5A: single authoritative path via rpc_advance_appeal_case)
  * - Recovery actions (log recovery transactions via ops_events)
  * - Claim notes (log notes via ops_events)
  * - Timeline queries (unified chronological history)
@@ -12,8 +12,14 @@
  * - claim_assignments (extended with assigned_to_user_id, priority, due_date)
  * - ops_events (append-only audit trail with standardized kinds)
  * - recovery_outcomes (final recovery result)
+ * - appeal_recovery_cases (appeal state machine)
+ * - idempotency_keys (Phase 4B / 5A financial-mutation idempotency)
  *
- * No new tables. All workflow history tracked in ops_events.
+ * Phase 5A change:
+ *   advanceAppealCase() is now the sole authoritative appeal mutation.
+ *   logAppealEvent() is preserved for call-site compatibility but internally
+ *   routes through advanceAppealCase() with p_case_id = null so every appeal
+ *   event is idempotency-protected and atomically written by the RPC.
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -218,8 +224,126 @@ export async function addNote(
   });
 }
 
+// =========================================================
+// Appeal Lifecycle — Phase 5A single authoritative path
+// =========================================================
+
+export interface AdvanceAppealCaseParams {
+  /** Caller-supplied idempotency key (must be 'appeal:<uuid>'). */
+  idempotencyKey: string;
+  /** UUID of the appeal_recovery_cases row.  Pass null/undefined for
+   *  the ops-events-only path (former logAppealEvent use case). */
+  caseId?: string | null;
+  orgId: string;
+  /** Actor identifier (user UUID or display name). */
+  actor?: string;
+  /** Current state of the case (required when caseId is provided). */
+  expectedState?: string;
+  /** Target state (required when caseId is provided). */
+  nextState?: string;
+  /** Extra fields to patch on the case row inside the same transaction. */
+  extraPatch?: {
+    recovered_amount_cents?: number;
+    payer_response_status?: string;
+    packet_id?: string;
+  };
+  /** ops_events.kind — required for the audit row. */
+  eventKind: 'appeal_submitted' | 'appeal_responded' | 'appeal_resolved';
+  /** Human-readable summary for the audit row. */
+  eventSummary: string;
+  /** Additional structured payload for the audit row. */
+  eventPayload?: {
+    appeal_status?: string;
+    payer_response?: string;
+    notes?: string;
+    [key: string]: unknown;
+  };
+  /** claim_id for ops_events linkage (required for timeline queries). */
+  claimId?: string;
+}
+
+export interface AdvanceAppealCaseResult {
+  alreadyConsumed: boolean;
+  resultId: string;
+  newState: string | null;
+  eventId: string | null;
+}
+
+/**
+ * Phase 5A: Single authoritative appeal mutation.
+ *
+ * Routes through rpc_advance_appeal_case (SECURITY DEFINER) which atomically:
+ *   1. Reserves/checks the idempotency key
+ *   2. Validates tenant membership
+ *   3. Advances appeal_recovery_cases state (when caseId is provided)
+ *   4. Applies extraPatch columns inside the same transaction
+ *   5. Inserts exactly one ops_events audit row
+ *   6. Commits result_id
+ *
+ * A duplicate request with the same idempotencyKey returns the original
+ * resultId without creating a second state transition or audit event.
+ */
+export async function advanceAppealCase(
+  params: AdvanceAppealCaseParams,
+): Promise<AdvanceAppealCaseResult> {
+  const {
+    idempotencyKey,
+    caseId,
+    orgId,
+    actor,
+    expectedState,
+    nextState,
+    extraPatch,
+    eventKind,
+    eventSummary,
+    eventPayload,
+    claimId,
+  } = params;
+
+  if (!idempotencyKey) {
+    throw new Error('advanceAppealCase: idempotencyKey is required');
+  }
+
+  const { data, error } = await supabase.rpc('rpc_advance_appeal_case', {
+    p_idempotency_key: idempotencyKey,
+    p_case_id:         caseId ?? null,
+    p_org_id:          orgId,
+    p_actor:           actor ?? 'unknown',
+    p_expected_state:  expectedState ?? null,
+    p_next_state:      nextState ?? null,
+    p_extra_patch:     extraPatch ? (extraPatch as Record<string, unknown>) : null,
+    p_event_kind:      eventKind,
+    p_event_summary:   eventSummary,
+    p_event_payload:   eventPayload ?? null,
+    p_claim_id:        claimId ?? null,
+  } as never);
+
+  if (error) throw error;
+
+  const result = data as {
+    already_consumed: boolean;
+    result_id: string;
+    new_state: string | null;
+    event_id: string | null;
+  };
+
+  return {
+    alreadyConsumed: result.already_consumed,
+    resultId: result.result_id,
+    newState: result.new_state ?? null,
+    eventId: result.event_id ?? null,
+  };
+}
+
 /**
  * Log an appeal event.
+ *
+ * Phase 5A: Internally routes through advanceAppealCase() (which calls
+ * rpc_advance_appeal_case) so every appeal event is idempotency-protected
+ * and written atomically by the SECURITY DEFINER RPC.
+ *
+ * Call-site compatibility is preserved: callers do not need to change their
+ * call shape, but they must now supply an idempotencyKey.
  */
 export async function logAppealEvent(
   claimId: string,
@@ -230,19 +354,31 @@ export async function logAppealEvent(
     appealStatus?: 'pending_response' | 'won' | 'lost' | 'withdrawn';
     payerResponse?: string;
     notes?: string;
+    /** Required (Phase 5A). Use makeIdempotencyKey('appeal'). */
+    idempotencyKey: string;
+    actor?: string;
   },
 ): Promise<string> {
-  return appendOpsEvent({
-    kind: params.kind,
-    claimId,
+  if (!params.idempotencyKey) {
+    throw new Error('logAppealEvent: idempotencyKey is required');
+  }
+
+  const result = await advanceAppealCase({
+    idempotencyKey: params.idempotencyKey,
+    caseId:         null,   // ops-events-only path
     orgId,
-    summary: params.summary,
-    payload: {
-      appeal_status: params.appealStatus,
+    actor:          params.actor,
+    eventKind:      params.kind,
+    eventSummary:   params.summary,
+    eventPayload: {
+      appeal_status:  params.appealStatus,
       payer_response: params.payerResponse,
-      notes: params.notes,
+      notes:          params.notes,
     },
+    claimId,
   });
+
+  return result.resultId;
 }
 
 /**
