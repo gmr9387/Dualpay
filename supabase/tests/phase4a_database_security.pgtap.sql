@@ -431,12 +431,15 @@ SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.role', 'authenticated', true);
 SELECT set_config('request.jwt.claim.sub', 'dddddddd-dddd-dddd-dddd-dddddddddddd', true); -- analyst
 
-SELECT lives_ok(
+-- Phase 4B Remediation D: INSERT on idempotency_keys is revoked from authenticated.
+-- All idempotency writes must go through the four SECURITY DEFINER RPCs.
+SELECT throws_ok(
   $$
     INSERT INTO public.idempotency_keys (key, claim_id, org_id, actor)
     VALUES ('phase4a-key-analyst', 'phase4a-claim-a', '11111111-1111-1111-1111-111111111111', 'analyst-test')
   $$,
-  'Analyst can perform payment/idempotency write operation'
+  '42501',
+  'Analyst cannot directly INSERT into idempotency_keys — must use Phase 4B SECURITY DEFINER RPCs'
 );
 
 SELECT lives_ok(
