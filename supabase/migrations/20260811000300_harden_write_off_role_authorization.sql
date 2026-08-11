@@ -126,7 +126,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.rpc_log_write_off IS
-  'Phase 4B Remediation C: Write-off restricted to analyst/manager/admin/owner roles; '
+  'Phase 4B Write-off Authorization Hardening: Write-off restricted to analyst/manager/admin/owner roles; '
   'simple org membership is insufficient for this financially destructive operation.';
 
 REVOKE ALL ON FUNCTION public.rpc_log_write_off FROM PUBLIC;
