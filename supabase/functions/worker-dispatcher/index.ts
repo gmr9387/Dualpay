@@ -4,7 +4,12 @@
 // candidate discovery, deterministic contract match, true underpayment
 // detection, and idempotent dispute creation — all server-side.
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { corsHeaders } from '../_shared/cors.ts';
+import {
+  Contract, Fee,
+  matchContract, findFee, computeExpected,
+  VAR_MIN_CENTS, VAR_MIN_PCT, severityOf, makeDedupeKey,
+} from '../_shared/contract-primitives.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -23,7 +28,7 @@ interface QueueJob {
 const WORKER_VERSION = '19.0.0';
 
 // ---------- ops_events helper ----------
-function evId() { return `EV-${Date.now().toString(36)}-${crypto.randomUUID().slice(0,8)}`; }
+function evId() { return crypto.randomUUID(); }
 async function audit(
   client: ReturnType<typeof createClient>,
   kind: string, summary: string, actor: string,
@@ -53,64 +58,6 @@ async function heartbeat(client: ReturnType<typeof createClient>, worker_id: str
   } as never).eq('worker_id', worker_id);
   await audit(client, 'worker_heartbeat', `Heartbeat ${worker_id} (+${ok} ok, +${fail} fail)`,
     'system:worker-dispatcher', null, { worker_id, ok, fail });
-}
-
-// ---------- Contract-matching primitives (mirror src/engine/contract-*.ts) ----------
-type Contract = { contract_id: string; org_id: string; payer_name: string; contract_name: string;
-  version: string; effective_date: string; termination_date: string | null };
-type Fee = { fee_schedule_id: string; contract_id: string; procedure_code: string;
-  modifier: string | null; contracted_amount_cents: number; reimbursement_method: string };
-
-function matchContract(contracts: Contract[], payer_name: string, service_date: string): Contract | null {
-  const wanted = (payer_name ?? '').trim().toLowerCase();
-  const cand = contracts.filter(c =>
-    c.payer_name.trim().toLowerCase() === wanted
-    && service_date >= c.effective_date
-    && (!c.termination_date || service_date <= c.termination_date));
-  if (!cand.length) return null;
-  cand.sort((a, b) => b.effective_date.localeCompare(a.effective_date)
-    || String(b.version).localeCompare(String(a.version)));
-  return cand[0];
-}
-
-function findFee(fees: Fee[], contract_id: string, procedure_code: string, modifier: string | null): Fee | undefined {
-  const rows = fees.filter(f => f.contract_id === contract_id
-    && f.procedure_code.toUpperCase() === procedure_code.toUpperCase());
-  return rows.find(f => (f.modifier ?? '') === (modifier ?? ''))
-      ?? rows.find(f => !f.modifier)
-      ?? rows[0];
-}
-
-function computeExpected(fee: Fee, billed_cents: number, medicare_cents = 0): { expected: number; basis: string; conf: number } {
-  switch (fee.reimbursement_method) {
-    case 'fixed_fee':
-    case 'case_rate':
-    case 'per_diem':
-      return { expected: fee.contracted_amount_cents, basis: `${fee.reimbursement_method}`, conf: 95 };
-    case 'percent_of_billed': {
-      const pct = fee.contracted_amount_cents / 10000;
-      return { expected: Math.round(billed_cents * pct), basis: `${(pct*100).toFixed(1)}% of billed`, conf: 85 };
-    }
-    case 'percent_of_medicare': {
-      if (!medicare_cents) return { expected: 0, basis: 'Medicare allowable unavailable', conf: 30 };
-      const pct = fee.contracted_amount_cents / 10000;
-      return { expected: Math.round(medicare_cents * pct), basis: `${(pct*100).toFixed(1)}% of Medicare`, conf: 80 };
-    }
-    default: return { expected: fee.contracted_amount_cents, basis: `Unknown method`, conf: 60 };
-  }
-}
-
-const VAR_MIN_CENTS = 100;   // $1
-const VAR_MIN_PCT = 2;       // 2%
-function severityOf(variance: number, pct: number): string {
-  if (pct >= 25 || variance >= 50_000) return 'critical';
-  if (pct >= 15 || variance >= 20_000) return 'high';
-  if (pct >= 5  || variance >=  5_000) return 'medium';
-  return 'low';
-}
-
-function makeDedupeKey(claim_id: string, contract_id: string | null, variance_cents: number, service_date: string | null) {
-  return `${claim_id}|${contract_id ?? 'none'}|${variance_cents}|${service_date ?? 'none'}`;
 }
 
 // ---------- Candidate discovery (Phase 20: prefer remittance_lines) ----------
