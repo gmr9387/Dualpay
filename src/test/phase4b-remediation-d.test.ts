@@ -50,60 +50,84 @@ describe('makeIdempotencyKey — appeal namespace', () => {
 // ── GuidedRecovery: key reaches rpc_advance_appeal_case ──────
 
 describe('GuidedRecovery — appeal transition (UNIT)', () => {
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.resetModules();
+  });
 
-  it('advance() is called with an appeal-scoped key that reaches rpc_advance_appeal_case', async () => {
-    // Simulate what handleAdvance in GuidedRecovery.tsx does:
-    //   const idempotencyKey = makeIdempotencyKey('appeal');
-    //   await advance(arc, next, idempotencyKey);
+  it('GuidedRecovery generates appeal:<uuid> and passes it to advance()', async () => {
+    const fixedKey = 'appeal:123e4567-e89b-12d3-a456-426614174000';
+    const makeKeySpy = vi.fn(() => fixedKey);
+    const advanceSpy = vi.fn(async () => null);
 
-    const spy = vi.spyOn(supabase, 'rpc' as never).mockResolvedValue({
-      data: { already_consumed: false, result_id: 'ARC-case-uuid-appeal_filed', new_state: 'appeal_filed' },
-      error: null,
-    } as never);
-
-    // Invoke the hook's advance logic directly, matching how GuidedRecovery uses it.
-    const { useAppealRecoveryCases } = await import('@/hooks/use-appeal-recovery-cases');
-    // We cannot call React hooks outside components, so test the RPC call pattern
-    // by directly replicating the hook's advance() body:
-    const idempotencyKey = makeIdempotencyKey('appeal');
-    expect(idempotencyKey).toMatch(/^appeal:/);
-
-    // Simulate what the hook passes to rpc
-    await supabase.rpc('rpc_advance_appeal_case', {
-      p_idempotency_key: idempotencyKey,
-      p_case_id:         'case-uuid',
-      p_org_id:          'org-uuid',
-      p_actor:           'test-user',
-      p_expected_state:  'denied',
-      p_next_state:      'appeal_filed',
-    } as never);
-
-    expect(spy).toHaveBeenCalledWith(
-      'rpc_advance_appeal_case',
-      expect.objectContaining({
-        p_idempotency_key: idempotencyKey,
+    vi.doMock('@/data/operational-workflows', async () => {
+      const actual = await vi.importActual<typeof import('@/data/operational-workflows')>('@/data/operational-workflows');
+      return { ...actual, makeIdempotencyKey: makeKeySpy };
+    });
+    vi.doMock('@/hooks/use-appeal-recovery-cases', () => ({
+      APPEAL_RECOVERY_STATES: ['denied', 'appeal_filed', 'submitted', 'payer_response', 'recovered', 'closed'],
+      canTransitionTo: (from: string, to: string) => from === 'denied' && to === 'appeal_filed',
+      useAppealRecoveryCases: () => ({
+        cases: [{
+          id: 'case-uuid',
+          organization_id: 'org-uuid',
+          claim_id: 'CLM-001',
+          current_state: 'denied',
+          assigned_to_user_id: 'user-uuid',
+          packet_id: null,
+          core_trace_id: null,
+          core_decision_outcome: null,
+          core_dispatch_status: null,
+          glue_run_id: null,
+          payer_response_status: null,
+          recovered_amount_cents: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }],
+        loading: false,
+        error: null,
+        reload: vi.fn(),
+        create: vi.fn(),
+        update: vi.fn(),
+        advance: advanceSpy,
       }),
-    );
+    }));
 
-    // Key must be appeal-namespaced when it reaches the RPC
-    const callArgs = spy.mock.calls[0][1] as Record<string, string>;
-    expect(callArgs.p_idempotency_key).toMatch(/^appeal:/);
+    const React = await import('react');
+    const { render, screen, fireEvent, waitFor } = await import('@testing-library/react');
+    const { default: GuidedRecovery } = await import('@/pages/GuidedRecovery');
 
-    // Suppress unused-import lint error
-    void useAppealRecoveryCases;
+    render(React.createElement(GuidedRecovery));
+    fireEvent.click(screen.getByTitle('Advance to Appeal Filed'));
+
+    await waitFor(() => {
+      expect(makeKeySpy).toHaveBeenCalledWith('appeal');
+      expect(advanceSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'case-uuid' }),
+        'appeal_filed',
+        fixedKey,
+      );
+    });
+
+    expect(fixedKey).toMatch(/^appeal:[0-9a-f-]{36}$/i);
   });
 
-  it('advance() guard requires a non-empty idempotency key', async () => {
-    // Verify the hook guard fires when key is missing (regression guard)
-    // GuidedRecovery.tsx now always provides a key, but the hook guard must remain.
-    // We test that makeIdempotencyKey always produces a non-empty string.
-    const key = makeIdempotencyKey('appeal');
-    expect(key.length).toBeGreaterThan(0);
-    expect(key).not.toBe('');
+  it('hook path forwards idempotencyKey to rpc_advance_appeal_case as p_idempotency_key', async () => {
+    const { readFile } = await import('fs/promises');
+    const src = await readFile('src/hooks/use-appeal-recovery-cases.ts', 'utf-8');
+    expect(src).toMatch(/rpc\('rpc_advance_appeal_case'/);
+    expect(src).toMatch(/p_idempotency_key:\s*idempotencyKey/);
   });
 
-  it('duplicate advance with same key returns original result without re-mutating', async () => {
+  it('required-key guard remains intact in hook source', async () => {
+    const { readFile } = await import('fs/promises');
+    const src = await readFile('src/hooks/use-appeal-recovery-cases.ts', 'utf-8');
+    expect(src).toContain("if (!idempotencyKey) {");
+    expect(src).toContain("setError('advance: idempotencyKey is required');");
+    expect(src).toContain('return null;');
+  });
+
+  it('duplicate idempotency response returns the original result_id', async () => {
     const spy = vi.spyOn(supabase, 'rpc' as never)
       .mockResolvedValueOnce({
         data: { already_consumed: false, result_id: 'ARC-1', new_state: 'appeal_filed' },
@@ -115,7 +139,6 @@ describe('GuidedRecovery — appeal transition (UNIT)', () => {
       } as never);
 
     const key = makeIdempotencyKey('appeal');
-
     const params = {
       p_idempotency_key: key,
       p_case_id: 'case-uuid',
@@ -129,8 +152,8 @@ describe('GuidedRecovery — appeal transition (UNIT)', () => {
     const r2 = await supabase.rpc('rpc_advance_appeal_case', params);
 
     expect((r1.data as { result_id: string }).result_id).toBe('ARC-1');
-    expect((r2.data as { already_consumed: boolean }).already_consumed).toBe(true);
     expect((r2.data as { result_id: string }).result_id).toBe('ARC-1');
+    expect((r2.data as { already_consumed: boolean }).already_consumed).toBe(true);
     expect(spy).toHaveBeenCalledTimes(2);
   });
 });
@@ -254,22 +277,27 @@ describe('Legacy helper absence — no deleted symbols in production source', ()
     'listIdempotencyKeysForClaimPersistent',
   ];
 
-  const PRODUCTION_MODULES = [
-    '@/engine/state-machine',
-    '@/data/repository',
-    '@/data/operational-workflows',
-  ];
+  it('main.tsx no longer references deleted persistent helper names', async () => {
+    const { readFile } = await import('fs/promises');
+    const src = await readFile('src/main.tsx', 'utf-8');
+    expect(src).not.toContain('isIdempotencyKeyConsumedPersistent');
+  });
 
   for (const symbol of DELETED_SYMBOLS) {
-    it(`"${symbol}" is not exported from any production module`, async () => {
-      for (const mod of PRODUCTION_MODULES) {
-        let exports: Record<string, unknown> = {};
-        try {
-          exports = await import(mod);
-        } catch {
-          // module may not exist; that's fine
-        }
-        expect(Object.keys(exports)).not.toContain(symbol);
+    it(`"${symbol}" does not appear in non-test production files`, async () => {
+      const { readFile } = await import('fs/promises');
+      const files = [
+        'src/main.tsx',
+        'src/engine/state-machine.ts',
+        'src/data/operational-workflows.ts',
+        'src/data/repository.ts',
+        'src/hooks/use-appeal-recovery-cases.ts',
+        'src/pages/GuidedRecovery.tsx',
+      ];
+
+      for (const file of files) {
+        const body = await readFile(file, 'utf-8');
+        expect(body).not.toContain(symbol);
       }
     });
   }
