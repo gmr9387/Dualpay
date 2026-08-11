@@ -21,7 +21,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import {
   updateAssignment, addNote, logAppealEvent, logRecoveryEvent, logWriteOff,
-  getClaimTimeline, getNoteTimeline,
+  getClaimTimeline, getNoteTimeline, makeIdempotencyKey,
   type TimelineEvent, type ClaimAssignmentRecord,
 } from '@/data/operational-workflows';
 import { supabase } from '@/integrations/supabase/client';
@@ -180,8 +180,8 @@ export function ClaimDrawer({ claimId, orgId, userId, onClose, onChanged }: Prop
                   </div>
                   <WriteOffForm
                     busy={busy}
-                    onSubmit={(reason) =>
-                      wrap(() => logWriteOff(claimId!, orgId, reason, userId), 'Claim written off')
+                    onSubmit={(reason, idempotencyKey) =>
+                      wrap(() => logWriteOff(claimId!, orgId, reason, userId, idempotencyKey), 'Claim written off')
                     }
                   />
                 </div>
@@ -497,6 +497,7 @@ function RecoveryPanel({
     amountCents: number;
     recoveredFrom: string;
     notes?: string;
+    idempotencyKey: string;
   }) => void;
 }) {
   const [type, setType] = useState<'payer_payment' | 'patient_payment' | 'writeoff' | 'adjustment'>('payer_payment');
@@ -547,11 +548,13 @@ function RecoveryPanel({
       </div>
       <div className="flex justify-end">
         <Button size="sm" disabled={busy || !valid} onClick={() => {
+          const idempotencyKey = makeIdempotencyKey('recovery');
           onSubmit({
             recoveryType: type,
             amountCents: Math.round(Number(amount) * 100),
             recoveredFrom: source.trim(),
             notes: notes || undefined,
+            idempotencyKey,
           });
           setAmount(''); setSource(''); setNotes('');
         }}>Record recovery</Button>
@@ -562,7 +565,7 @@ function RecoveryPanel({
 
 function WriteOffForm({
   busy, onSubmit,
-}: { busy: boolean; onSubmit: (reason: string) => void }) {
+}: { busy: boolean; onSubmit: (reason: string, idempotencyKey: string) => void }) {
   const [reason, setReason] = useState('');
   return (
     <div className="space-y-2">
@@ -576,7 +579,7 @@ function WriteOffForm({
         <Button
           size="sm" variant="outline" disabled={busy || !reason.trim()}
           className="border-status-denied/40 text-status-denied hover:bg-status-denied/10"
-          onClick={() => { onSubmit(reason.trim()); setReason(''); }}
+          onClick={() => { onSubmit(reason.trim(), makeIdempotencyKey('write_off')); setReason(''); }}
         >
           <XCircle className="h-3.5 w-3.5 mr-1" /> Write off claim
         </Button>

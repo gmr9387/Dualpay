@@ -214,6 +214,11 @@ vi.mock("@/integrations/supabase/client", () => {
         on: () => ({ subscribe: () => ({ unsubscribe: () => {} }) }),
       }),
       removeChannel: () => {},
+      rpc: (_fn: string, _params?: unknown) =>
+        Promise.resolve({
+          data: { already_consumed: false, event_id: 'EV-mock-default', result_id: 'MOCK-RESULT', new_status: 'MOCK', new_state: 'MOCK' },
+          error: null,
+        }),
     },
   };
 });

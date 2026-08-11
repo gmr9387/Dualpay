@@ -53,7 +53,18 @@ const requireIdempotencyKey: TransitionGuard = {
   check: (ctx) => typeof ctx.idempotencyKey === 'string' && ctx.idempotencyKey.length > 0,
 };
 
-// ── Idempotency Registry (In-Memory Cache) ──────────────────
+// ── Idempotency Registry (In-Memory UI Cache — NOT authoritative) ──────────
+//
+// Phase 4B: The in-memory Set is retained ONLY as a UI-layer hint to avoid
+// redundant RPC calls within a single browser session.  It is NOT the
+// authoritative idempotency gate for financial mutations.
+//
+// The authoritative gate is the `idempotency_keys` table in PostgreSQL,
+// enforced by the SECURITY DEFINER RPCs (rpc_advance_payment_state,
+// rpc_log_recovery_event, rpc_log_write_off, rpc_advance_appeal_case).
+//
+// Do NOT use consumedIdempotencyKeys or consumeIdempotencyKey to decide
+// whether a financial mutation may proceed.
 
 const consumedIdempotencyKeys = new Set<string>();
 
@@ -62,14 +73,14 @@ let idempotencyInitialized = false;
 /**
  * Initialize idempotency key tracking from persistent storage.
  * Call once on app startup.
+ *
+ * Phase 4B: This warms the in-memory UI cache.  The database RPCs are the
+ * authoritative source of truth and do not depend on this cache being warm.
  */
 export async function initializeIdempotencyKeyTracking(): Promise<void> {
   if (idempotencyInitialized) return;
 
   try {
-    // Note: In a full implementation, we would load all consumed keys from the DB.
-    // For now, we start fresh and rely on DB as the source of truth.
-    // Each call to isIdempotencyKeyConsumedPersistent checks the DB directly.
     consumedIdempotencyKeys.clear();
     idempotencyInitialized = true;
   } catch (error) {
@@ -79,12 +90,11 @@ export async function initializeIdempotencyKeyTracking(): Promise<void> {
 }
 
 /**
- * Consume an idempotency key. Returns true on first use, false if already consumed.
- * 
- * This is the in-memory check. For production, always verify against the DB as well.
- * 
- * Callers that perform side-effectful payment work should invoke this before
- * acting and abort if it returns false.
+ * UI cache hint: marks a key as consumed in the local session cache.
+ *
+ * Phase 4B: NOT the authoritative payment gate.  Returns true on first local
+ * use, false if the key is already in the cache.  This does NOT prevent a
+ * second financial mutation — use `advancePaymentState` for that.
  */
 export function consumeIdempotencyKey(key: string): boolean {
   if (!key) return false;
@@ -94,60 +104,60 @@ export function consumeIdempotencyKey(key: string): boolean {
 }
 
 /**
- * Check if an idempotency key has been consumed (in-memory check only).
+ * UI cache hint: returns true if the key is in the local session cache.
+ * Phase 4B: NOT a substitute for the persistent DB check.
  */
 export function isIdempotencyKeyConsumed(key: string): boolean {
   return consumedIdempotencyKeys.has(key);
 }
 
 /**
- * Check if an idempotency key has been consumed (persistent check).
- * For payment transitions, always use this to survive restarts.
+ * Advance a claim through a payment state transition using the authoritative
+ * server-side RPC.
  *
- * Checks the in-memory cache first — if the key is already there, we can
- * skip the DB round-trip entirely. The DB is consulted only for keys not in
- * the local cache so that keys consumed by a previous process instance (e.g.
- * before a server restart) are still detected.
+ * Phase 4B: This is the ONLY supported path for executing a payment mutation.
+ * The RPC atomically:
+ *   1. validates org membership
+ *   2. checks the idempotency key in PostgreSQL
+ *   3. updates claims.status
+ *   4. records the idempotency key
+ * All in a single transaction.
+ *
+ * Returns the result from the RPC.  If `already_consumed` is true the
+ * original result_id is returned without re-executing the mutation.
  */
-export async function isIdempotencyKeyConsumedPersistent(key: string): Promise<boolean> {
-  // Fast path: in-memory cache already has it.
-  if (consumedIdempotencyKeys.has(key)) return true;
+export async function advancePaymentState(params: {
+  idempotencyKey: string;
+  claimId: string;
+  orgId: string;
+  fromStatus: ClaimStatus;
+  toStatus: ClaimStatus;
+  actor: string;
+}): Promise<{ already_consumed: boolean; result_id: string; new_status: string }> {
+  const { supabase } = await import('@/integrations/supabase/client');
 
-  try {
-    const { isIdempotencyKeyConsumedPersistent: checkDB } = await import('@/data/repository');
-    const consumed = await checkDB(key);
-    if (consumed) {
-      // Warm the local cache so subsequent calls skip the DB.
-      consumedIdempotencyKeys.add(key);
-    }
-    return consumed;
-  } catch (error) {
-    console.error('Failed to check idempotency key in DB:', error);
-    // Fail safe: assume consumed if we can't check the DB
-    return true;
+  const { data, error } = await supabase.rpc('rpc_advance_payment_state', {
+    p_idempotency_key: params.idempotencyKey,
+    p_claim_id:        params.claimId,
+    p_org_id:          params.orgId,
+    p_from_status:     params.fromStatus,
+    p_to_status:       params.toStatus,
+    p_actor:           params.actor,
+  } as never);
+
+  if (error) throw error;
+
+  const result = data as { already_consumed: boolean; result_id: string; new_status: string };
+
+  // Warm the UI cache on success.
+  if (!result.already_consumed) {
+    consumedIdempotencyKeys.add(params.idempotencyKey);
   }
+
+  return result;
 }
 
-/**
- * Record an idempotency key consumption in persistent storage.
- * Call after a successful payment transition.
- */
-export async function recordIdempotencyKeyConsumptionPersistent(
-  key: string,
-  claimId: string,
-  actor: string,
-): Promise<void> {
-  try {
-    const { recordIdempotencyKeyConsumption } = await import('@/data/repository');
-    await recordIdempotencyKeyConsumption(key, claimId, actor);
-    // Also update in-memory cache
-    consumedIdempotencyKeys.add(key);
-  } catch (error) {
-    throw new Error(`Failed to record idempotency key consumption: ${error}`);
-  }
-}
-
-/** Test/dev only — clears the in-memory consumed-key registry. */
+/** Test/dev only — clears the in-memory UI cache. */
 export function clearIdempotencyKeysForDev(): void {
   consumedIdempotencyKeys.clear();
   idempotencyInitialized = false;
@@ -345,7 +355,10 @@ export function canTransition(
     }
   }
 
-  // Reject already-consumed idempotency keys on payment transitions.
+  // Phase 4B: The in-memory Set is no longer the authoritative idempotency
+  // gate.  The check below is retained only as a UI-layer hint so that the
+  // state diagram can reflect a locally-known consumed key.  The actual
+  // enforcement happens inside rpc_advance_payment_state on the DB.
   const paymentTransition = isPaymentTransition(
     context.currentStatus,
     context.targetStatus,
