@@ -2,7 +2,7 @@
 // Discovers queued jobs, then triggers the worker-dispatcher to drain them.
 // Invoked by pg_cron every minute.
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { corsHeaders } from '../_shared/cors.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
   const run_id = (started as Record<string, unknown> | null)?.run_id as string | undefined;
 
   await client.from('ops_events').insert([{
-    event_id: `EV-${Date.now().toString(36)}-${crypto.randomUUID().slice(0,8)}`,
+    event_id: crypto.randomUUID(),
     occurred_at: new Date().toISOString(), kind: 'scheduler_started',
     actor: 'system:scheduler-dispatcher',
     summary: `Scheduler ${SCHEDULER_NAME} started`,
@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
   } as never).eq('run_id', run_id ?? '');
 
   await client.from('ops_events').insert([{
-    event_id: `EV-${Date.now().toString(36)}-${crypto.randomUUID().slice(0,8)}`,
+    event_id: crypto.randomUUID(),
     occurred_at: new Date().toISOString(),
     kind: workerError ? 'scheduler_failed' : 'scheduler_completed',
     actor: 'system:scheduler-dispatcher',
