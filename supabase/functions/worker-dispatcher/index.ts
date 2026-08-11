@@ -367,12 +367,25 @@ async function runHandler(client: ReturnType<typeof createClient>, job: QueueJob
     const targets = open.filter(o => !linked.has(o.claim_id));
     let created = 0;
     for (const t of targets) {
+      const caseTrigger = 'major_underpayment' as const;
       const { data: c } = await client.from('cases').insert([{
-        org_id: job.org_id, trigger: 'major_underpayment', status: 'open',
+        org_id: job.org_id, trigger: caseTrigger, status: 'open',
         description: `Auto-case for ${t.payer_name} underpayment (${t.variance_percent?.toFixed?.(1) ?? '?'}%)`,
       }] as never).select('case_id').single();
       if (c) {
-        await client.from('case_claim_links').insert([{ case_id: (c as Record<string, unknown>).case_id, claim_id: t.claim_id, org_id: job.org_id }] as never);
+        const caseId = (c as Record<string, unknown>).case_id;
+        await client.from('case_claim_links').insert([{ case_id: caseId, claim_id: t.claim_id, org_id: job.org_id }] as never);
+        // case_created lineage event. The case is a distinct entity from dispute:
+        // one case may cover multiple high-severity disputes for the same claim.
+        // The linked-claim check above guarantees this fires at most once per claim.
+        // trigger is read from caseTrigger (same value written to cases.trigger above).
+        await client.from('recovery_lineage_events').insert([{
+          org_id: job.org_id,
+          claim_id: t.claim_id,
+          event_type: 'case_created',
+          event_summary: `Recovery case created for ${t.payer_name} underpayment (${t.variance_percent?.toFixed?.(1) ?? '?'}%)`,
+          payload: { case_id: caseId, trigger: caseTrigger, payer_name: t.payer_name },
+        }] as never);
         created += 1;
       }
     }
