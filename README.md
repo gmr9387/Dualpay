@@ -1,243 +1,761 @@
 # Claim Clarity — DualPay Core Ledger
 
-> Enterprise healthcare reimbursement intelligence platform that eliminates revenue leakage by automating denial recovery, contract underpayment detection, and claim transparency for healthcare billing operations.
+> A production-oriented healthcare reimbursement intelligence platform for deterministic adjudication, denial recovery, contract underpayment detection, and auditable recovery workflows.
+
+DualPay Core Ledger is a healthcare reimbursement platform designed to connect claims, remittance data, reimbursement calculations, denial intelligence, contract analysis, recovery operations, evidence, appeals, and outcomes in one auditable workflow.
+
+The system is built around deterministic financial logic, organization-scoped authorization, durable background processing, persisted workflow state, and explicit auditability.
+
+It is a portfolio engineering project and research implementation. It is **not represented as HIPAA-certified, SOC 2-certified, or commercially production-deployed**.
 
 ---
 
 ## Table of Contents
 
-* [Overview](#overview)
-* [Why This Exists](#why-this-exists)
-* [Enterprise Highlights](#enterprise-highlights)
-* [Key Features](#key-features)
-* [Architecture](#architecture)
-* [Technology Stack](#technology-stack)
-* [Project Structure](#project-structure)
-* [Core Workflows](#core-workflows)
-* [Security](#security)
-* [Database Design](#database-design)
-* [API Overview](#api-overview)
-* [Installation](#installation)
-* [Configuration](#configuration)
-* [Testing](#testing)
-* [Deployment](#deployment)
-* [Performance](#performance)
-* [Roadmap](#roadmap)
-* [Documentation](#documentation)
-* [Screenshots](#screenshots)
-* [Contributing](#contributing)
-* [License](#license)
-* [Author](#author)
-* [Acknowledgements](#acknowledgements)
+- [Overview](#overview)
+- [Why This Exists](#why-this-exists)
+- [What DualPay Does](#what-dualpay-does)
+- [Capability Status](#capability-status)
+- [Core Features](#core-features)
+- [Architecture](#architecture)
+- [Core Workflows](#core-workflows)
+- [Security Architecture](#security-architecture)
+- [Database Design](#database-design)
+- [Reliability and Background Processing](#reliability-and-background-processing)
+- [X12 EDI](#x12-edi)
+- [Lineage and Auditability](#lineage-and-auditability)
+- [Replay and Idempotency](#replay-and-idempotency)
+- [Technology Stack](#technology-stack)
+- [Project Structure](#project-structure)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Testing and Verification](#testing-and-verification)
+- [Deployment](#deployment)
+- [Performance and Scalability](#performance-and-scalability)
+- [Security and Compliance Positioning](#security-and-compliance-positioning)
+- [Known Limitations](#known-limitations)
+- [Roadmap](#roadmap)
+- [Documentation](#documentation)
+- [Screenshots](#screenshots)
+- [Contributing](#contributing)
+- [License](#license)
+- [Author](#author)
 
 ---
 
 # Overview
 
-Claim Clarity is a production-grade healthcare reimbursement intelligence platform built for denial recovery and revenue protection. It serves healthcare billing managers, revenue cycle teams, and executives who need to understand where money is stuck, why it was denied or underpaid, who is responsible for recovering it, and how much has actually been returned.
+DualPay Core Ledger addresses a recurring problem in healthcare revenue-cycle operations: reimbursement information is distributed across claims, remittance files, payer contracts, denial codes, evidence, appeals, assignments, and financial outcomes.
 
-The platform ingests claims and remittance data (CSV or native X12 EDI 835/837), runs deterministic adjudication and Coordination of Benefits (COB) logic, identifies recoverable denials and contract underpayments, orchestrates recovery workflows, and surfaces every outcome in real-time executive dashboards — with a complete audit trail linking every dollar of recovered revenue back to the original claim, engine decision, and team action.
+The platform connects those workflows into a single system.
 
-Claim Clarity is the commercial wedge of the **Valtaris** ecosystem, supported by Cloud (tenancy/security/audit), Glue (workflow runtime), Core (COB/adjudication), and Weaver (context intelligence).
+At a high level:
+
+    Claims / X12 EDI
+           │
+           ▼
+    Normalization & Validation
+           │
+           ▼
+    Deterministic Adjudication
+           │
+           ├───────────────┐
+           ▼               ▼
+    Denial Intelligence   Contract Analysis
+           │               │
+           └───────┬───────┘
+                   ▼
+            Recovery Workflow
+                   │
+            ┌──────┴──────┐
+            ▼             ▼
+          Case         Dispute
+            │             │
+            └──────┬──────┘
+                   ▼
+            Evidence / Appeal
+                   │
+                   ▼
+                Outcome
+                   │
+                   ▼
+           Recovery Reporting
+
+The core design principle is **deterministic, explainable processing**.
+
+Financial calculations and reimbursement decisions are implemented as explicit TypeScript engines rather than opaque machine-learning outputs. This allows calculations and workflow decisions to be tested, replayed, inspected, and traced.
 
 ---
 
 # Why This Exists
 
-## Business Problem
+Healthcare reimbursement involves multiple interacting systems and rules:
 
-Healthcare providers lose an estimated 3–5% of annual revenue to unpaid, underpaid, or incorrectly denied claims. Billing teams lack the tools to systematically identify which denials are recoverable, which payers are consistently underpaying against contracted rates, and whether appeal efforts are generating a measurable return. Without unified visibility, revenue leaks silently and consistently.
+- claims;
+- remittance advice;
+- CARC/RARC denial codes;
+- payer contracts;
+- fee schedules;
+- coordination of benefits;
+- evidence requirements;
+- appeals;
+- assignments;
+- recovery outcomes.
 
-## Technical Challenge
+A reimbursement discrepancy therefore becomes more than a calculation problem.
 
-Healthcare reimbursement involves layered complexity: COB primacy rules across multiple payers, CARC/RARC denial reason codes with hundreds of permutations, contract fee schedules with multiple reimbursement methods, X12 EDI transaction formats, multi-tenant data isolation requirements, and strict HIPAA considerations for PHI handling. Building reliable automation on top of this requires deterministic engines, idempotent execution, and an immutable audit trail — not heuristics or black-box ML.
+It becomes a workflow and auditability problem.
 
-## Solution
-
-Claim Clarity solves this by providing a fully deterministic intelligence stack:
-
-- **Denial Intelligence** classifies every denial by recoverability, severity, and required evidence using CARC/RARC codes.
-- **Contract Intelligence** matches claims to payer contracts and computes exact expected reimbursement to detect underpayments to the cent.
-- **Autonomous Recovery Pipeline** chains these engines into an orchestrated job pipeline that runs server-side without requiring browser sessions.
-- **Executive Value Realization** attributes every recovered dollar to its category, payer, playbook, and team member — with deterministic narrative generation.
-- **Complete Audit Trail** ensures every metric, decision, and action is traceable to persisted rows; no fabricated numbers.
-
----
-
-# Enterprise Highlights
-
-* **Multi-tenant architecture** — every table is org-scoped with `org_id NOT NULL`; complete data isolation between organizations
-* **Row-Level Security (RLS)** — Postgres RLS policies enforce org membership on every operational table; no globally permissive policies
-* **Role-Based Access Control (RBAC)** — five-tier role hierarchy (viewer → analyst → manager → admin → owner) with granular UI and API enforcement
-* **Immutable audit logging** — `ops_events` is append-only; every workflow action, job execution, document upload, and audit export is permanently recorded
-* **Idempotent execution** — payment state transitions require unique idempotency keys; contract recovery jobs use deduplicate keys to prevent double-processing
-* **Durable workflow execution** — server-side edge worker pipeline for contract recovery, remittance analysis, and dispute generation; jobs survive browser session termination
-* **Retry and recovery mechanisms** — dead-letter queue captures failed jobs with full error context for inspection and retry without data loss
-* **Queue-based processing** — work queues with priority assignment, SLA tracking, and worklist management per analyst
-* **Event-driven architecture** — every state transition, workflow action, and pipeline step emits typed `ops_events` with actor, org, payload, and timestamp
-* **Deterministic intelligence engines** — all adjudication, COB, denial scoring, and contract math is rule-based and reproducible; no ML or fabricated outputs
-* **RESTful APIs** — PostgREST auto-generated REST endpoints over all operational tables, scoped by JWT and RLS
-* **Real-time dashboards** — executive command center, payer scorecards, playbook effectiveness, and recovery attribution dashboards
-* **Structured observability** — every engine decision and job execution emits typed `ops_events` with actor, org, payload, and timestamp
-* **Production-ready infrastructure** — SECURITY DEFINER functions restricted to `authenticated`; `PUBLIC`/`anon` execute rights revoked across all helpers
-* **Scalable cloud deployment** — Supabase Edge Functions scale to zero and spin up on demand; idempotent job execution allows safe parallel invocation
-* **SOC 2 aligned security practices** — immutable audit log, least-privilege access, no anonymous data access, org-scoped data isolation
-* **HIPAA-ready architecture** — PHI handling, access controls, audit logging, and incident response plans documented in `docs/`
-* **X12 EDI native processing** — parse, validate, and normalize 835/837P/837I transactions without intermediate CSV conversion
-* **Replay-verifiable adjudication** — every adjudication run is fingerprinted with canonical JSON + SHA-256; results are deterministically reproducible
+DualPay was designed to explore how those processes can be represented as a deterministic, multi-tenant application with durable background execution and database-enforced authorization.
 
 ---
 
-# Key Features
+# What DualPay Does
 
-## Core Capabilities
+## Reimbursement and Adjudication
 
-* **Claim adjudication** — fee schedule application, deductible/coinsurance accumulation, cross-line accumulator tracking, and full COB allocation across four policy types (Standard, Non-Duplication, Carve-Out, Maintenance of Benefits)
-* **COB Rules Engine** — timezone-safe birthday rule, length-of-coverage rule, primacy output validation, largest-remainder multi-payer rounding (exact cent accuracy)
-* **CARC/RARC Denial Intelligence** — denial classification, recoverability scoring, severity scoring, evidence requirements, and next-best-action recommendations per denial reason code
-* **Contract Underpayment Detection** — matches claims to payer contracts (fixed / case / per-diem / percent-of-billed / percent-of-Medicare) and detects variance to the cent
-* **X12 EDI Gateway** — native ingestion of 835, 837P, and 837I transactions with structural validation, envelope integrity checks, and canonical normalization
-* **Remittance Lineage** — end-to-end traceability from every imported remittance row through claims, underpayments, disputes, cases, and outcomes
-* **Appeal Packet Generator** — deterministic Markdown appeal packets with claim details, denial context, evidence checklist, and readiness gate
+- Fee schedule application
+- Deductible and coinsurance calculations
+- Cross-line accumulator tracking
+- Multi-payer COB allocation
+- Primacy validation
+- Deterministic rounding
+- Adjudication traces
+- Replay records
 
-## Administrative Features
+## Denial Intelligence
 
-* **Admin Console** — org-level KPIs (members, audit events, exports, stored documents), RLS policy inventory, and audit export configuration
-* **PHI-Safe Audit Export** — CSV or JSON export in Full (admin/owner) or Redacted (manager+) mode; every export permanently logged
-* **Security Inventory** — browsable RLS policy list and SECURITY DEFINER helper inventory at `/admin/security`
-* **Role-Aware UI** — controls hidden (not just disabled) for unauthorized roles; `RequireRole` guards protect admin routes
+- CARC/RARC classification
+- Recoverability scoring
+- Severity scoring
+- Evidence requirements
+- Recommended next actions
+- Playbook assignment
+
+## Contract Recovery
+
+- Payer contract matching
+- Effective-date selection
+- Fee schedule matching
+- Fixed reimbursement
+- Case reimbursement
+- Per-diem reimbursement
+- Percent-of-billed reimbursement
+- Percent-of-Medicare reimbursement
+- Expected reimbursement calculation
+- Variance detection
+- Idempotent dispute generation
+
+## X12 EDI
+
+Native processing and verification for:
+
+- 835 remittance transactions
+- 837P professional claims
+- 837I institutional claims
+
+The EDI pipeline includes parsing, structural validation, envelope/control-number checks, and canonical normalization.
+
+## Recovery Operations
+
+- Recovery cases
+- Disputes
+- Claim assignments
+- Worklists
+- Evidence documents
+- Appeal packet generation
+- Appeal lifecycle
+- Recovery outcomes
+- Payer scorecards
+- Recovery reporting
 
 ## Automation
 
-* **Autonomous Recovery Pipeline** — seven-step orchestrated job chain (remittance analysis → contract matching → underpayment detection → dispute generation → case generation → queue assignment → executive recalculation)
-* **Automation Rules Engine** — configurable triggers (`underpayment_threshold`, `sla_risk`, `evidence_stale`, `denial_severity`, `repeat_payer_issue`) with automatic case creation, manager assignment, and escalation actions
-* **Server-Side Contract Recovery** — edge worker pipeline that discovers underpayment candidates, matches contracts, computes variance, and writes idempotent dispute records without browser involvement
+- Durable jobs
+- Server-side workers
+- Scheduler dispatch
+- Retry handling
+- Exponential backoff
+- Dead-letter queue
+- Pipeline orchestration
+- Automation rules
+- Job telemetry
 
-## Reporting
+---
 
-* **Executive Value Realization** — at-risk vs recovered breakdown, expected future recovery, monthly/category/payer narrative (deterministic; "Insufficient Outcome History" returned for slices with fewer than 5 outcomes)
-* **Recovery Attribution** — attribute every recovered dollar to category, payer, playbook, owner, and resolution action
-* **Payer Scorecards** — denial rate, underpayment rate, recovery rate, appeal success, and top failure categories per payer
-* **Playbook Effectiveness** — rank playbooks by recovery rate, total dollars, resolution time, and appeal success rate
-* **Recovery Intelligence Dashboard** — SLA status, escalation tracking, workload management, and payer operations
+# Capability Status
+
+DualPay intentionally distinguishes between **implemented**, **verified**, and **roadmap** capabilities.
+
+| Capability / Control | Implementation | Automated Evidence | Live Verification | Status |
+|---|---|---|---|---|
+| Multi-tenant organization model | Yes | Yes | Pending final DB execution | 🟡 |
+| PostgreSQL RLS | Yes | Yes | Pending final live verification | 🟡 |
+| RBAC | Yes | Yes | Pending final live verification | 🟡 |
+| SECURITY DEFINER boundaries | Yes | Yes | Reviewed | 🟢 |
+| `ops_events` immutability | Yes | Yes | Pending final live DB verification | 🟡 |
+| Storage tenant isolation | Yes | Policy/test coverage | Pending live verification | 🟡 |
+| Durable jobs | Yes | Yes | — | 🟢 |
+| Scheduler | Yes | Yes | — | 🟢 |
+| Retry / DLQ | Yes | Yes | — | 🟢 |
+| Contract recovery | Yes | Yes | — | 🟢 |
+| Denial detection | Yes | Yes | — | 🟢 |
+| X12 835 | Yes | Yes | Additional integration verification pending | 🟡 |
+| X12 837P | Yes | Yes | Additional integration verification pending | 🟡 |
+| X12 837I | Yes | Yes | Additional integration verification pending | 🟡 |
+| Replay verification | Yes | Yes | Live DB verification pending | 🟡 |
+| Persisted idempotency | Partial by operation | Yes | Additional live verification pending | 🟡 |
+| Recovery lineage | Partial/implemented by lifecycle | Yes | — | 🟡 |
+| Evidence lineage event | Not currently authoritative | — | — | 🔵 Roadmap |
+| Appeal lineage event | Not currently authoritative | — | — | 🔵 Roadmap |
+| Executive value attribution event | No authoritative persisted boundary | — | — | 🔵 Roadmap |
+| MFA enforcement | Not enabled | — | — | 🔵 Roadmap |
+| Performance benchmarking | Not formally benchmarked | — | — | 🔵 Roadmap |
+| Commercial production deployment | Not deployed | — | — | 🔵 Roadmap |
+
+### Status Legend
+
+- 🟢 **Implemented and supported by current verification**
+- 🟡 **Implemented or substantially implemented; additional verification remains**
+- 🔵 **Planned / roadmap**
+- 🔴 **Not implemented**
+
+---
+
+# Core Features
+
+## Deterministic Adjudication
+
+The reimbursement calculation engine applies explicit reimbursement rules for:
+
+- fee schedules;
+- deductibles;
+- coinsurance;
+- accumulators;
+- multiple payers;
+- COB policy behavior.
+
+The objective is reproducibility: the same inputs and rules should produce the same result.
+
+---
+
+## COB Rules Engine
+
+The COB implementation includes:
+
+- birthday rule handling;
+- length-of-coverage logic;
+- primacy validation;
+- multiple-payer allocation;
+- largest-remainder rounding.
+
+Calculations are performed using deterministic rules rather than probabilistic inference.
+
+---
+
+## CARC/RARC Denial Intelligence
+
+Denial processing maps remittance information into operational recovery signals.
+
+The system evaluates:
+
+- denial classification;
+- recoverability;
+- severity;
+- evidence requirements;
+- recommended actions.
+
+Denial classification is connected to recovery lineage rather than remaining isolated in the import layer.
+
+---
+
+## Contract Underpayment Detection
+
+Contract recovery compares actual reimbursement against expected reimbursement.
+
+The pipeline:
+
+    Remittance
+        ↓
+    Candidate Discovery
+        ↓
+    Contract Matching
+        ↓
+    Expected Reimbursement
+        ↓
+    Actual vs. Expected Variance
+        ↓
+    Underpayment Dispute
+        ↓
+    Recovery Workflow
+
+Supported reimbursement methods include:
+
+- fixed;
+- case;
+- per-diem;
+- percentage of billed;
+- percentage of Medicare.
+
+Underpayment disputes use deterministic deduplication keys to prevent duplicate dispute creation.
 
 ---
 
 # Architecture
 
-## High-Level Architecture
+    ┌─────────────────────────────────────────────────────────────┐
+    │                         React SPA                           │
+    │                                                             │
+    │  Command Center · Claims · Recovery · Evidence · Appeals    │
+    │  Automation · Executive Reporting · Administration           │
+    └──────────────────────────┬──────────────────────────────────┘
+                               │
+                               │ Supabase JS / JWT
+                               ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │                     Supabase Platform                       │
+    │                                                             │
+    │  ┌────────────────┐  ┌──────────────────┐  ┌──────────────┐ │
+    │  │ PostgreSQL     │  │ Edge Functions   │  │ Storage      │ │
+    │  │                │  │                  │  │              │ │
+    │  │ RLS            │  │ worker-dispatcher│  │ Evidence     │ │
+    │  │ Triggers       │  │ scheduler        │  │ Appeal       │ │
+    │  │ RPCs           │  │ invite-member    │  │ Packets      │ │
+    │  └────────────────┘  └──────────────────┘  └──────────────┘ │
+    │                                                             │
+    │                     Supabase Auth                           │
+    └──────────────────────────┬──────────────────────────────────┘
+                               │
+                               ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │                Deterministic Engine Layer                   │
+    │                                                             │
+    │ calculation-engine   cob-rules       denial-intel           │
+    │ contract-match       contract-underpayment                  │
+    │ x12-parser            edi-validator                         │
+    │ edi-normalizer        dispute generation                     │
+    │ pipeline orchestration   replay / fingerprinting             │
+    └─────────────────────────────────────────────────────────────┘
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        Browser (React SPA)                  │
-│  Command Center · Denial Intelligence · Claims Workbench    │
-│  Evidence Vault · Executive Dashboards · EDI Gateway        │
-│  Automation Center · Admin Console · Recovery Factory       │
-└────────────────────────┬────────────────────────────────────┘
-                         │ HTTPS / Supabase JS SDK
-┌────────────────────────▼────────────────────────────────────┐
-│                    Supabase Platform                        │
-│                                                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐ │
-│  │  PostgreSQL  │  │ Edge Functions│  │  Storage Buckets  │ │
-│  │  + RLS       │  │ (Deno/TS)    │  │  evidence-docs    │ │
-│  │  + Triggers  │  │              │  │  appeal-packets   │ │
-│  └──────────────┘  │ worker-      │  └───────────────────┘ │
-│                    │ dispatcher   │                         │
-│  ┌──────────────┐  │ scheduler-   │  ┌───────────────────┐ │
-│  │  Supabase    │  │ dispatcher   │  │  Supabase Auth    │ │
-│  │  Auth        │  │ invite-member│  │  (JWT / RLS)      │ │
-│  └──────────────┘  └──────────────┘  └───────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────────┐
-│              Deterministic Intelligence Engines             │
-│  (TypeScript — runs in browser and mirrored in workers)     │
-│                                                             │
-│  calculation-engine  │  cob-rules       │  denial-intel     │
-│  contract-match      │  dispute-gen     │  job-runner       │
-│  x12-parser          │  edi-normalizer  │  pipeline-orch    │
-│  value-realization   │  payer-perf      │  appeal-packet    │
-└─────────────────────────────────────────────────────────────┘
-```
+## Frontend
 
----
+React + TypeScript single-page application using:
 
-## System Components
+- Vite
+- Tailwind CSS
+- shadcn/ui
+- React Router
+- TanStack Query
+- React Hook Form
+- Zod
+- Recharts
 
-### Frontend
+## Backend
 
-React 18 single-page application with TypeScript, Vite, Tailwind CSS v3, and shadcn/ui components. All intelligence engines are TypeScript modules that run in the browser for interactive exploration; the same logic is mirrored server-side in edge workers for durable execution. React Query manages server state and cache invalidation. React Router v6 handles 70+ routes across the platform.
+Supabase provides:
 
-### Backend
+- PostgreSQL
+- PostgREST
+- Authentication
+- Storage
+- Edge Functions
 
-Supabase (hosted Postgres + PostgREST + Auth + Storage + Edge Functions). All data access goes through the Supabase JS SDK using the authenticated user's JWT; RLS policies enforce org-level isolation at the database layer. Three edge functions handle durable work: `worker-dispatcher` (job execution), `scheduler-dispatcher` (scheduled triggers), and `invite-member` (org invitation flow).
+## Background Execution
 
-### Database
+Three Edge Functions support the platform:
 
-PostgreSQL with 30+ operational tables, all `org_id NOT NULL`, protected by org-scoped RLS policies. SECURITY DEFINER helper functions (`is_org_member`, `has_org_role`, `current_org_id`) are restricted to `authenticated` role. Triggers maintain `updated_at` timestamps and handle new-user org creation automatically.
+- `worker-dispatcher`
+- `scheduler-dispatcher`
+- `invite-member`
 
-### Authentication
-
-Supabase Auth with email/password. JWTs are automatically included in all SDK requests; RLS policies evaluate `auth.uid()` against `organization_members` to enforce org membership. The `handle_new_user_org` trigger creates a personal organization for every new signup. MFA tracking columns are present in schema; TOTP enforcement is a roadmap item.
-
-### Storage
-
-Two private Supabase Storage buckets: `evidence-documents` (uploaded claim evidence — PDF, PNG, JPG, DOCX, XLSX) and `appeal-packets` (generated appeal packet snapshots). Storage RLS is keyed off the first path segment (`org_id`). Files are never overwritten; re-uploads auto-increment a version counter and preserve parent links.
-
-### AI Services
-
-No third-party AI services are used in the current release. All intelligence — adjudication, COB allocation, denial scoring, contract matching, and value attribution — is performed by deterministic TypeScript engines with explicit rule logic. This ensures reproducibility, auditability, and HIPAA-safe operation without sending PHI to external AI providers. AI-assisted automation is on the future roadmap.
-
-### Background Workers
-
-Three Supabase Edge Functions (Deno + TypeScript): `worker-dispatcher` executes durable jobs (remittance analysis, contract recovery, dispute generation, case generation, queue assignment, executive recalculation); `scheduler-dispatcher` handles time-based triggers; `invite-member` manages org invitations. Workers emit typed `ops_events` on every significant state change.
-
-### Integrations
-
-Native X12 EDI processing (835, 837P, 837I) via `x12-parser.ts`, `edi-validator.ts`, and `edi-normalizer.ts`. XLSX export via the `xlsx` library. PDF generation via `jsPDF`. Future: direct payer API integrations for 270/271 eligibility and 276/277 claim status.
+The worker executes durable jobs and persists their results.
 
 ---
 
-## Data Flow
+# Core Workflows
 
-```
-1. Claim Ingestion
-   CSV upload / X12 EDI paste → Recovery Factory / EDI Gateway
-   → row validation → field mapping → commitBatch()
-   → claims + remittance_lines + claim_source_links + lineage_events persisted
+## 1. Claim / Remittance Import
 
-2. Adjudication
-   Claim selected → calculation-engine (fee schedule → deductible → COB)
-   → state-machine transition (RECEIVED → ADJUDICATED)
-   → adjudication_run + trace + replay_record persisted
-   → ops_events: adjudication_completed
+    CSV or X12
+       ↓
+    Validation
+       ↓
+    Field Mapping
+       ↓
+    Batch Commit
+       ↓
+    Claims + Remittance Lines
+       ↓
+    Lineage
 
-3. Denial Intelligence
-   Adjudicated claim → denial-intelligence (CARC/RARC classification)
-   → recoverability score + severity + evidence requirements
-   → next-action recommendations → playbook assignment
-   → ops_events: denial_classified
+Imported data is validated before being persisted.
 
-4. Recovery Workflow
-   Analyst opens claim → assignment created (priority + due date)
-   → appeal submitted → evidence uploaded to vault
-   → appeal packet generated → outcome recorded
-   → ops_events: assignment_created, appeal_submitted, outcome_recorded
+---
 
-5. Contract Recovery (Server-Side)
-   job: contract_recovery_analysis dispatched to worker-dispatcher
-   → load contracts + fee schedules → discover candidates from claims
-   → contract-match → contract-underpayment → variance detected
-   → underpayment_disputes written (idempotent dedupe_key)
-   → ops_events: underpayment_detected, dispute_created
+## 2. Denial Detection
 
-6. Executive Attribution
-   Executive dashboard loads → value-realization aggregates
-   recovery_outcomes + underpayment_disputes → attribute to payer/playbook/owner
-   → deterministic narrative generated
-   → insufficient: true returned for slices < 5 outcomes
-```
+    835 Remittance
+          ↓
+    Remittance Classification
+          ↓
+    Denial
+          ↓
+    denial_detected
+          ↓
+    Recovery Analysis
+
+The `denial_detected` lineage event is emitted at the existing 835 denial-classification boundary.
+
+Non-denial remittance classifications do not generate the denial event.
+
+---
+
+## 3. Contract Recovery
+
+    contract_recovery_analysis
+              ↓
+    Candidate Discovery
+              ↓
+    Contract Matching
+              ↓
+    Expected Reimbursement
+              ↓
+    Variance
+              ↓
+    underpayment_disputes
+              ↓
+    underpayment_detected
+              ↓
+    dispute_created
+
+The server-side worker performs the recovery operation without requiring an active browser session.
+
+---
+
+## 4. Recovery Case Generation
+
+    Recovery Opportunity
+            ↓
+    Case Generation
+            ↓
+    cases
+            ↓
+    case_claim_links
+            ↓
+    case_created
+
+`case_created` and `dispute_created` represent distinct lifecycle concepts.
+
+A case aggregates recovery work around a claim; a dispute represents a specific reimbursement variance.
+
+---
+
+## 5. Denial Recovery Workflow
+
+    Denial
+      ↓
+    Recoverability / Severity
+      ↓
+    Assignment
+      ↓
+    Evidence
+      ↓
+    Appeal Packet
+      ↓
+    Appeal
+      ↓
+    Outcome
+
+The system supports evidence collection, readiness checks, deterministic appeal packet generation, assignment, and outcome recording.
+
+---
+
+# Security Architecture
+
+## Authentication
+
+Supabase Auth provides authenticated sessions and JWT-based identity.
+
+Database authorization uses `auth.uid()` and organization membership rather than trusting browser-supplied organization identifiers.
+
+---
+
+## Authorization
+
+DualPay implements a five-level role hierarchy:
+
+    viewer
+       ↓
+    analyst
+       ↓
+    manager
+       ↓
+    admin
+       ↓
+    owner
+
+Role information is stored in `organization_members`.
+
+Authorization is implemented across:
+
+- PostgreSQL RLS;
+- SECURITY DEFINER helper functions;
+- application-level role guards.
+
+UI controls are hidden for unauthorized roles rather than relying exclusively on disabled buttons.
+
+---
+
+## Multi-Tenant Isolation
+
+Operational records are organization-scoped.
+
+The security model uses:
+
+- `org_id`;
+- organization membership;
+- PostgreSQL RLS policies;
+- role-aware policies;
+- authenticated JWT context.
+
+The repository includes application-level and database-oriented tests for cross-organization access.
+
+### Verification status
+
+The repository contains a dedicated pgTAP security verification suite for live PostgreSQL execution.
+
+Final live execution against the deployed/local Supabase database remains a separate verification step.
+
+Therefore this project does **not** claim that live database isolation has been exhaustively verified in every deployment environment.
+
+---
+
+## SECURITY DEFINER Functions
+
+Privileged database functions are explicitly reviewed for:
+
+- `SECURITY DEFINER`;
+- safe `search_path`;
+- organization membership checks;
+- role checks;
+- execution grants.
+
+`PUBLIC` and anonymous execution are restricted where appropriate.
+
+---
+
+## Audit Logging
+
+`ops_events` is designed as an append-only operational event stream.
+
+Events capture information such as:
+
+- actor;
+- organization;
+- event kind;
+- entity references;
+- payload;
+- timestamp.
+
+The repository contains tests for immutability behavior.
+
+Final live database verification of trigger/RLS enforcement remains pending.
+
+---
+
+## Input Validation
+
+Validation occurs at multiple boundaries:
+
+- import validation;
+- X12 envelope validation;
+- EDI structure validation;
+- Zod form schemas;
+- database constraints;
+- explicit error handling for unsupported rule types.
+
+The goal is fail-fast behavior rather than silently applying invalid reimbursement rules.
+
+---
+
+# Database Design
+
+PostgreSQL contains functional domains including:
+
+| Domain | Representative Tables |
+|---|---|
+| Claims | `claims`, `claim_source_links` |
+| Adjudication | `adjudication_runs`, `traces` |
+| Replay | `replay_records`, `replay_ledger_events` |
+| Idempotency | `idempotency_keys` |
+| Operations | `ops_events`, `claim_assignments` |
+| Cases | `cases`, `case_claim_links`, `case_events` |
+| Recovery | `recovery_outcomes`, `underpayment_disputes` |
+| Import | `import_batches`, `import_exceptions` |
+| Evidence | `evidence_documents` |
+| Contracts | `payer_contracts`, `fee_schedules` |
+| Automation | `automation_jobs`, `automation_rules` |
+| EDI | `edi_transactions`, `edi_segments`, `edi_errors` |
+| Lineage | `remittance_lines`, `recovery_lineage_events` |
+| Identity | `organizations`, `organization_members` |
+
+Important relationships include:
+
+    claims
+      └── adjudication_runs
+            └── traces
+
+    claims
+      └── remittance_lines
+            └── underpayment_disputes
+
+    cases
+      └── case_claim_links
+            └── claims
+
+    recovery_outcomes
+      └── reporting / recovery metrics
+
+    recovery_lineage_events
+      └── entity_type + entity_id
+
+Indexes are used for organization-scoped filtering, high-frequency joins, worklists, and deterministic dispute deduplication.
+
+---
+
+# Reliability and Background Processing
+
+DualPay uses durable job execution for operations that should not depend on a browser session remaining open.
+
+## Job Lifecycle
+
+    queued
+      ↓
+    claimed
+      ↓
+    running
+      ↓
+    completed
+
+Failures can move through retry handling:
+
+    failed
+      ↓
+    retry
+      ↓
+    failed
+      ↓
+    retry
+      ↓
+    dead_letter
+
+The worker infrastructure includes:
+
+- retry tracking;
+- exponential backoff;
+- dead-letter handling;
+- persisted job state;
+- failure telemetry.
+
+---
+
+## Scheduler
+
+The scheduler dispatches background work and records execution results.
+
+A scheduler failure is now represented as a failed scheduler run rather than being silently treated as success.
+
+Failure telemetry includes persisted status and diagnostic information appropriate for operational review.
+
+---
+
+# X12 EDI
+
+DualPay includes native processing support for:
+
+- X12 835;
+- X12 837P;
+- X12 837I.
+
+The EDI pipeline includes:
+
+    Raw X12
+      ↓
+    Parser
+      ↓
+    Envelope Validation
+      ↓
+    Structural Validation
+      ↓
+    Normalization
+      ↓
+    Canonical Internal Representation
+      ↓
+    Application Processing
+
+The repository includes positive and malformed fixture coverage for parsing, validation, and normalization.
+
+Additional live integration testing remains a verification concern rather than a claim of complete payer interoperability.
+
+---
+
+# Lineage and Auditability
+
+DualPay maintains recovery lineage across major lifecycle transitions.
+
+Current implemented lineage includes:
+
+    claim_created
+          ↓
+    denial_detected
+          ↓
+    underpayment_detected
+          ↓
+    case_created / dispute_created
+          ↓
+    outcome_recorded
+
+Additional operational events are recorded through `ops_events`.
+
+## Current Lineage Status
+
+| Lifecycle | Event | Status |
+|---|---|---|
+| Claim | `claim_created` | 🟢 |
+| Denial | `denial_detected` | 🟢 |
+| Recovery detection | `underpayment_detected` | 🟢 |
+| Case | `case_created` | 🟢 |
+| Dispute | `dispute_created` | 🟢 |
+| Outcome | `outcome_recorded` | 🟢 |
+| Evidence | Dedicated lineage event | 🔵 Roadmap |
+| Appeal | Dedicated lineage event | 🔵 Roadmap |
+| Recovered value | Derived from outcomes | 🟡 |
+| Executive attribution | Dedicated persisted event | 🔵 Roadmap |
+
+The project deliberately does not create a transactional event for a concept that currently exists only as a derived report.
+
+For example, `executive_value_attributed` remains a roadmap concept because the current executive metrics are derived from persisted recovery data rather than created by a dedicated authoritative attribution transaction.
+
+---
+
+# Replay and Idempotency
+
+Financial workflows require protection against duplicate execution.
+
+DualPay includes:
+
+- persisted idempotency infrastructure;
+- unique deduplication keys for contract recovery;
+- replay records;
+- canonical fingerprints;
+- deterministic adjudication;
+- duplicate-operation tests.
+
+Important state-changing operations use persisted protections where implemented.
+
+The project does **not** claim universal persisted idempotency across every possible operation.
+
+That distinction is intentional.
 
 ---
 
@@ -245,244 +763,90 @@ Native X12 EDI processing (835, 837P, 837I) via `x12-parser.ts`, `edi-validator.
 
 ## Frontend
 
-* **React 18** — component model and concurrent rendering
-* **TypeScript 5** — strict typing across all engines and UI
-* **Vite 5** — fast dev server and optimized production builds
-* **Tailwind CSS v3** — utility-first styling
-* **shadcn/ui** — accessible component primitives (Radix UI)
-* **React Router v6** — client-side routing (70+ routes)
-* **TanStack Query v5** — server state, caching, background refetch
-* **Recharts** — data visualization for dashboards
-* **React Hook Form + Zod** — form management and schema validation
-* **jsPDF** — client-side PDF generation for appeal packets
-* **xlsx** — spreadsheet export
+- React 18
+- TypeScript
+- Vite
+- Tailwind CSS
+- shadcn/ui
+- React Router
+- TanStack Query
+- React Hook Form
+- Zod
+- Recharts
+- jsPDF
+- xlsx
 
 ## Backend
 
-* **Supabase** — hosted Postgres, Auth, Storage, Edge Functions, PostgREST
-* **PostgreSQL** — relational database with RLS, triggers, SECURITY DEFINER functions
-* **Deno (Edge Functions)** — worker-dispatcher, scheduler-dispatcher, invite-member
-* **Supabase JS SDK v2** — browser client with automatic JWT injection
+- Supabase
+- PostgreSQL
+- PostgREST
+- Supabase Auth
+- Supabase Storage
+- Supabase Edge Functions
+- Deno / TypeScript
 
-## Infrastructure
+## Testing
 
-* **Supabase Cloud** — managed Postgres + Auth + Storage + Edge runtime
-* **Supabase Storage** — private object storage for evidence and appeal packets
-* **Supabase Auth** — JWT-based authentication with org-scoped RLS
+- Vitest
+- pgTAP
+- ESLint
+
+## Development
+
+- Git
+- GitHub
+- npm / Bun
+- Supabase CLI
 
 ## AI
 
-* No external AI services in current release — all intelligence is deterministic TypeScript
-* Future roadmap: AI-assisted denial pattern analysis and appeal recommendation
+The current release does **not** use third-party AI services in the reimbursement decision path.
 
-## DevOps
+The core intelligence engines are deterministic TypeScript.
 
-* **GitHub** — source control and PR workflow
-* **Vitest** — unit and integration test runner
-* **ESLint** — static analysis and code quality
-* **Bun / npm** — package management
+AI-assisted denial analysis and appeal recommendations remain future roadmap capabilities.
 
 ---
 
 # Project Structure
 
-```text
-dualpay-core-ledger/
-│
-├── src/
-│   ├── engine/                    # Deterministic intelligence engines (50+)
-│   ├── pages/                     # Route-level page components (70+)
-│   ├── components/                # Shared UI components
-│   ├── hooks/                     # React Query data hooks
-│   ├── data/                      # Repository functions (DB access)
-│   ├── lib/                       # Shared utilities
-│   ├── types/                     # Shared TypeScript types
-│   ├── integrations/              # Supabase client + generated types
-│   └── test/                      # Vitest test files
-│
-├── supabase/
-│   ├── migrations/                # Ordered SQL migration files
-│   └── functions/                 # Edge Functions (Deno)
-│       ├── worker-dispatcher/
-│       ├── scheduler-dispatcher/
-│       └── invite-member/
-│
-├── docs/
-│   ├── SECURITY.md
-│   ├── HIPAA_OVERVIEW.md
-│   ├── ACCESS_CONTROL_POLICY.md
-│   ├── DATA_CLASSIFICATION.md
-│   ├── INCIDENT_RESPONSE_PLAN.md
-│   └── RISK_REGISTER.md
-│
-├── public/
-├── DEV_SETUP.md
-├── HARDENING_PR_SUMMARY.md
-├── PATCH_REPORT_PHASE1.md
-├── PHASE_3A_SUMMARY.md
-├── package.json
-├── vite.config.ts
-├── vitest.config.ts
-├── tailwind.config.ts
-└── tsconfig.json
-```
-
----
-
-# Core Workflows
-
-## Claim Denial Recovery
-
-**Purpose:** Guide a billing analyst from a received denial to a recovered payment, with every step audited.
-
-**Process:**
-1. Claim imported via Recovery Factory (CSV) or EDI Gateway (X12 835/837)
-2. Adjudication engine computes allowed amounts, applies COB rules, and flags the denial reason (CARC/RARC)
-3. Denial Intelligence scores recoverability and severity; next-action engine recommends the optimal playbook
-4. Analyst is assigned the claim with a priority level and due date via the operational workflow layer
-5. Evidence uploaded to the Evidence Vault; readiness engine checks completeness against required documents
-6. Appeal packet generated with deterministic Markdown including claim details, denial context, evidence inventory, and recovery opportunity
-7. Appeal submitted; lifecycle events (`appeal_submitted`, `appeal_responded`, `appeal_resolved`) appended to `ops_events`
-8. Recovery outcome recorded; executive attribution engine maps the recovered dollars to payer, playbook, and owner
-
-**Expected Result:** Recovered payment with full audit trail from denial event to outcome, linked to the responsible analyst and the playbook that drove recovery.
-
----
-
-## Contract Underpayment Detection & Dispute
-
-**Purpose:** Automatically identify claims paid below contracted rates and generate formal dispute records.
-
-**Process:**
-1. Recovery pipeline job `contract_recovery_analysis` dispatched to `worker-dispatcher` edge function
-2. Worker loads org-scoped `payer_contracts` and `fee_schedules`
-3. Candidate claims discovered from `remittance_lines` (preferred) or `claims.payload.intel.payer_responses`
-4. `contract-match` engine selects the applicable contract version by payer, effective date, and service type
-5. `contract-underpayment` engine computes expected reimbursement using the contract method (fixed, case, per-diem, percent-of-billed, percent-of-Medicare) and calculates variance
-6. `underpayment_disputes` row inserted with a deterministic `dedupe_key` (`claim_id|contract_id|variance_amount_cents|service_date`); duplicate runs are safely skipped by unique index
-7. Dispute appears in Contract Disputes dashboard; analyst reviews and initiates formal dispute process
-8. Lineage event `underpayment_detected` links the dispute back to the originating remittance line
-
-**Expected Result:** Complete, idempotent set of underpayment disputes with contract-level evidence, ready for formal payer submission.
-
----
-
-## Autonomous Recovery Pipeline
-
-**Purpose:** Run the full denial-to-recovery workflow automatically for all eligible claims in one orchestrated execution, without manual claim-by-claim intervention.
-
-**Process:**
-1. User clicks "Run Recovery Pipeline" in Automation Center or pipeline is triggered by an automation rule
-2. `pipeline-orchestrator` creates a shared `pipeline_id` and chains seven jobs sequentially: `remittance_analysis` → `contract_matching` → `underpayment_detection` → `dispute_generation` → `recovery_case_generation` → `queue_assignment` → `executive_recalculation`
-3. Each job reads existing persisted state from Supabase, executes the corresponding deterministic engine, and writes results back
-4. `auto-case-generator` creates `cases` + initial `case_events` for detected recovery opportunities
-5. `automation-rules` evaluates configured triggers (SLA risk, denial severity, repeat payer issues) and fires actions (auto-assign manager, escalate)
-6. Pipeline run recorded in `automation_jobs` with per-step status, record counts, and recovery value; every state change appended to `ops_events`
-
-**Expected Result:** All recoverable claims processed, cases opened, queues populated, and executive metrics refreshed in a single audited pipeline execution.
-
----
-
-# Security
-
-## Authentication
-
-Supabase Auth with email/password. JWTs are short-lived and automatically refreshed by the Supabase JS SDK. All API requests include the user JWT; the Postgres `auth.uid()` function resolves the identity for RLS enforcement. `handle_new_user_org` trigger auto-provisions a personal organization for every new user.
-
-## Authorization
-
-Five-tier RBAC: `viewer` (read-only), `analyst` (read + write + assign), `manager` (analyst + delete + escalate + redacted exports), `admin` (manager + org settings + security console + full exports), `owner` (admin + delete organization). Roles are stored in `organization_members.role` and enforced at three layers: Postgres RLS policies, SECURITY DEFINER helper functions, and React UI guards (`RequireRole` component, `role-permissions.ts`). UI controls are hidden — not just disabled — for unauthorized roles.
-
-## Data Protection
-
-All data is stored in Supabase's hosted Postgres with `org_id NOT NULL` on every operational table. Storage objects are in private buckets with RLS keyed off `org_id`. PHI identifiers are stripped from redacted audit exports. SECURITY DEFINER functions (`is_org_member`, `has_org_role`, `current_org_id`) have EXECUTE revoked from `PUBLIC` and `anon` — callable only by `authenticated` sessions.
-
-## Audit Logging
-
-`ops_events` is an append-only table (no UPDATE or DELETE RLS policy). Every workflow action, job execution, document upload, state transition, pipeline run, and audit export is permanently recorded with actor ID, org ID, event kind, payload, and timestamp. Audit exports themselves emit `audit_export_requested` and `audit_export_completed` events. See `docs/ACCESS_CONTROL_POLICY.md` for the full access control audit framework.
-
-## Input Validation
-
-All import rows are validated by `import-validation.ts` before ingestion. X12 EDI input is validated by `edi-validator.ts` (envelope integrity, control-number matching, segment-count balancing). Form inputs use Zod schemas via React Hook Form. Unknown COB policy types throw explicit errors (fail-fast) rather than silently applying wrong values.
-
-## Error Handling
-
-Intelligence engines throw typed errors with descriptive messages. Failed automation jobs are captured by the dead-letter queue (`dead-letter-queue.ts`) with retry tracking. Import exceptions are preserved with full error context and can be corrected and retried. Pipeline failures are recorded in `automation_jobs` with result JSON including error details.
-
-## Compliance
-
-HIPAA-ready architecture with documented PHI handling, access controls, audit logging, and incident response plan. See `docs/HIPAA_OVERVIEW.md`, `docs/INCIDENT_RESPONSE_PLAN.md`, `docs/DATA_CLASSIFICATION.md`, and `docs/RISK_REGISTER.md`. SOC 2-aligned practices: immutable audit log, least-privilege access, no anonymous data access, org-scoped data isolation.
-
----
-
-# Database Design
-
-## Overview
-
-PostgreSQL hosted on Supabase with 30+ tables organized into functional domains. Every operational table carries `org_id NOT NULL` with a foreign key to `organizations`, enforcing multi-tenant isolation at the schema level. Postgres RLS policies use SECURITY DEFINER helper functions to gate all reads and writes by org membership and role. Migrations are applied in sequence from `supabase/migrations/`.
-
-## Core Tables
-
-| Domain | Tables |
-|--------|--------|
-| **Claims & Adjudication** | `claims`, `member_accumulators`, `adjudication_runs`, `traces` |
-| **Replay & Idempotency** | `replay_records`, `replay_ledger_events`, `idempotency_keys` |
-| **Ops & Cases** | `ops_events`, `cases`, `case_claim_links`, `case_events`, `claim_assignments`, `recovery_outcomes` |
-| **Recovery Factory** | `import_batches`, `import_exceptions`, `field_mappings`, `remittance_batches` |
-| **Evidence** | `evidence_documents` |
-| **Contracts** | `payer_contracts`, `fee_schedules`, `underpayment_disputes` |
-| **Automation** | `automation_jobs`, `automation_rules` |
-| **EDI** | `edi_transactions`, `edi_segments`, `edi_errors` |
-| **Lineage** | `remittance_lines`, `claim_source_links`, `recovery_lineage_events` |
-| **Identity** | `organizations`, `organization_members` |
-
-## Relationships
-
-- `claims` → `member_accumulators` (member/plan year accumulation)
-- `claims` → `adjudication_runs` → `traces` (full adjudication audit chain)
-- `cases` → `case_claim_links` → `claims` (many-to-many via link table)
-- `ops_events` references `claim_id` and `case_id` (append-only event log)
-- `evidence_documents` → `parent_document_id` (self-referential versioning)
-- `underpayment_disputes` → `remittance_line_id` (lineage traceability)
-- `recovery_lineage_events` links any row across domains via polymorphic `entity_id` + `entity_type`
-- `organization_members` → `organizations` + `auth.users` (RBAC join)
-
-## Indexing Strategy
-
-- `org_id` indexes on every operational table for RLS-aligned filtered scans
-- `(org_id, claim_id)` composite indexes on high-join tables (ops_events, assignments, outcomes)
-- `(org_id, dedupe_key)` unique index on `underpayment_disputes` for idempotent contract recovery
-- `assigned_to_user_id`, `due_date`, `priority`, `(status, priority DESC)` indexes on `claim_assignments` for worklist queries
-- `assigned_at DESC` index for recent-assignment queries
-
----
-
-# API Overview
-
-## Authentication
-
-All requests require a Supabase JWT (`Authorization: ****** Tokens are obtained via `supabase.auth.signInWithPassword()` or `supabase.auth.signUp()`. RLS policies evaluate `auth.uid()` server-side; no client-supplied `org_id` or `user_id` is trusted for access decisions.
-
-## Primary Endpoints
-
-| Endpoint | Purpose |
-|----------|---------|
-| `GET /rest/v1/claims` | List org-scoped claims (RLS filtered) |
-| `GET /rest/v1/ops_events` | Audit event stream |
-| `GET /rest/v1/cases` | Recovery cases |
-| `GET /rest/v1/recovery_outcomes` | Recorded outcomes |
-| `GET /rest/v1/evidence_documents` | Evidence file metadata |
-| `GET /rest/v1/payer_contracts` | Contract records |
-| `GET /rest/v1/underpayment_disputes` | Contract dispute records |
-| `GET /rest/v1/automation_jobs` | Job execution history |
-| `GET /rest/v1/edi_transactions` | Parsed EDI transactions |
-| `GET /rest/v1/remittance_lines` | Remittance line items |
-| `POST /functions/v1/worker-dispatcher` | Dispatch durable jobs |
-| `POST /functions/v1/invite-member` | Invite user to org |
-
-## Response Format
-
-PostgREST returns JSON arrays with column selection, filtering (`?column=eq.value`), ordering, and pagination via standard PostgREST query parameters. Edge functions return `{ ok: boolean, data?: any, error?: string }`. All responses are org-scoped; cross-org data access returns empty results rather than errors.
+    dualpay-core-ledger/
+    │
+    ├── src/
+    │   ├── engine/                    # Deterministic intelligence engines
+    │   ├── pages/                     # Route-level page components
+    │   ├── components/                # Shared UI components
+    │   ├── hooks/                     # React Query hooks
+    │   ├── data/                      # Database/repository functions
+    │   ├── lib/                       # Shared application utilities
+    │   ├── types/                     # Shared TypeScript types
+    │   ├── integrations/              # Supabase integration
+    │   └── test/                      # Vitest tests
+    │
+    ├── supabase/
+    │   ├── migrations/                # Ordered SQL migrations
+    │   ├── functions/
+    │   │   ├── worker-dispatcher/
+    │   │   ├── scheduler-dispatcher/
+    │   │   └── invite-member/
+    │   └── tests/                     # Database / pgTAP verification
+    │
+    ├── docs/
+    │   ├── SECURITY.md
+    │   ├── HIPAA_OVERVIEW.md
+    │   ├── ACCESS_CONTROL_POLICY.md
+    │   ├── DATA_CLASSIFICATION.md
+    │   ├── INCIDENT_RESPONSE_PLAN.md
+    │   └── RISK_REGISTER.md
+    │
+    ├── public/
+    ├── DEV_SETUP.md
+    ├── package.json
+    ├── vite.config.ts
+    ├── vitest.config.ts
+    ├── tailwind.config.ts
+    └── tsconfig.json
 
 ---
 
@@ -490,122 +854,133 @@ PostgREST returns JSON arrays with column selection, filtering (`?column=eq.valu
 
 ## Prerequisites
 
-* Node.js 18+ or Bun
-* A Supabase project (cloud or local CLI)
-* Supabase URL and anon key
+- Node.js 18+ or Bun
+- Supabase project, local or hosted
+- Supabase CLI
 
-## Clone Repository
+## Clone
 
-```bash
-git clone https://github.com/gmr9387/dualpay-core-ledger.git
-cd dualpay-core-ledger
-```
+    git clone https://github.com/gmr9387/Dualpay.git
+    cd Dualpay
 
-## Install Dependencies
+## Install
 
-```bash
-npm install
-```
+    npm install
 
-## Configure Environment
+## Environment
 
-Create a `.env` file at the project root and add the required environment variables:
+Create `.env` from `.env.example`.
 
-```env
-VITE_SUPABASE_URL=https://<your-project>.supabase.co
-VITE_SUPABASE_ANON_KEY=<your-anon-key>
-VITE_DEMO_MODE=true
-```
+    VITE_SUPABASE_URL=https://<your-project>.supabase.co
+    VITE_SUPABASE_ANON_KEY=<your-anon-key>
+    VITE_DEMO_MODE=false
 
-## Apply Database Migrations
+Do not commit `.env`.
 
-```bash
-supabase db push
-# or for local development:
-supabase start
-supabase db reset
-```
+The repository uses `.env.example` for configuration guidance.
 
-## Start Development Server
+## Database
 
-```bash
-npm run dev
-# App available at http://localhost:5173
-```
+For a linked Supabase project:
 
-## Create a Dev User (Demo Mode)
+    supabase db push
 
-In the browser console after the app loads:
+For local development:
 
-```javascript
-import { ensureDevUser } from '@/lib/dev-auth-helper';
-await ensureDevUser('dev@example.com', 'devpassword123', 'analyst');
-```
+    supabase start
+    supabase db reset
 
-Then sign in with those credentials. See `DEV_SETUP.md` for full details.
+## Development Server
+
+    npm run dev
+
+The Vite development server runs on:
+
+    http://localhost:5173
 
 ---
 
 # Configuration
 
 | Variable | Required | Description |
-|----------|----------|-------------|
-| `VITE_SUPABASE_URL` | ✅ | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | ✅ | Supabase anon key (public, safe for browser) |
-| `VITE_DEMO_MODE` | Optional | `true` to auto-seed Demo Organization + sample data on first load |
+|---|---|---|
+| `VITE_SUPABASE_URL` | Yes | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Yes | Browser-safe Supabase public key |
+| `VITE_DEMO_MODE` | Optional | Enables demo-mode initialization |
 
-**Edge Function secrets** (set in Supabase dashboard → Edge Functions → Secrets):
+Server-side Edge Function secrets must be configured through the Supabase environment.
 
-| Secret | Description |
-|--------|-------------|
-| `SUPABASE_SERVICE_ROLE_KEY` | Service role key for worker-dispatcher privileged writes |
-| `SUPABASE_URL` | Project URL available inside edge functions |
-
-No secrets are committed to source control. The `.env` file is in `.gitignore`.
+The service-role key must **never** be exposed through a `VITE_` variable or committed to source control.
 
 ---
 
-# Testing
+# Testing and Verification
 
-## Unit Tests
+## Application Tests
 
-Engine logic is tested with Vitest. Run the full suite:
+Run:
 
-```bash
-npm run test
-```
+    npm run test
 
-Key test files:
+The repository includes coverage for:
 
-| File | Coverage |
-|------|---------|
-| `src/test/cob-rules.test.ts` | 50+ tests — birthday rule, COB allocation policies, primacy validation, rounding |
-| `src/test/calculation-engine.test.ts` | 32 tests — adjudication math, deductible, coinsurance, multi-payer COB |
-| `src/test/state-machine.test.ts` | 23 tests — idempotency keys, payment transitions, COB primacy confirmation |
-| `src/data/__tests__/operational-workflows.test.ts` | 40+ tests — assignment, notes, worklist, timeline, RLS scoping |
+- adjudication;
+- COB;
+- state transitions;
+- operational workflows;
+- scheduler behavior;
+- retry/DLQ;
+- recovery lineage;
+- RLS-related application behavior;
+- security helper behavior;
+- Storage policy logic;
+- X12 processing.
 
-## Integration Tests
+The latest audit pass added 100 tests without introducing new failures.
 
-Workflow integration tests verify that repository functions correctly scope queries to `org_id` and that RLS policies are not bypassed. Run with the same `npm run test` command.
+The environment still contains tests that require a live Supabase connection; those are tracked separately from application-level failures.
 
-## Manual Testing
+---
 
-After applying migrations and creating a dev user (see Installation), verify:
-- Claims visible on `/platform` or `/claims`
-- Adjudication executes and writes `adjudication_runs` row
-- Duplicate fingerprint does not create a new `replay_record`
-- Idempotency key blocks duplicate payment transitions
-- Evidence upload creates `evidence_documents` row and storage object
-- Automation job completes and appears in `/automation/jobs`
+## Database Security Verification
 
-## Performance Testing
+A dedicated pgTAP suite exists at:
 
-Run with coverage to inspect branch and line coverage on critical path engines:
+    supabase/tests/rls_security_verification.sql
 
-```bash
-npm run test -- --coverage
-# Target: src/engine/cob-rules.ts at 100% lines/branches/functions
-```
+The suite contains 30 database-level security assertions covering representative tenant-isolation and authorization behavior.
+
+The intended verification includes:
+
+- cross-organization SELECT isolation;
+- cross-organization INSERT protection;
+- cross-organization UPDATE protection;
+- cross-organization DELETE protection;
+- privileged function boundaries;
+- audit immutability.
+
+### Important
+
+The pgTAP suite is **verification infrastructure**, not proof that every test has already been executed against the final deployed environment.
+
+Final live execution against the target Supabase/PostgreSQL environment remains an explicit verification step.
+
+---
+
+## Manual Verification
+
+After migrations and authentication are configured, verify representative workflows:
+
+1. Authenticate as an organization member.
+2. Confirm organization-scoped claims are visible.
+3. Run adjudication.
+4. Confirm an `adjudication_runs` record is created.
+5. Verify duplicate replay fingerprints do not create duplicate replay records.
+6. Verify idempotency keys prevent duplicate protected state transitions.
+7. Upload evidence and verify the database record and Storage object.
+8. Execute an automation job.
+9. Confirm job state and telemetry.
+10. Inspect `ops_events` for the corresponding lifecycle events.
 
 ---
 
@@ -613,142 +988,272 @@ npm run test -- --coverage
 
 ## Development
 
-```bash
-npm run dev          # Vite dev server with HMR at localhost:5173
-supabase start       # Local Supabase stack (Docker)
-```
+    npm run dev
+    supabase start
 
-## Staging
+## Build
 
-```bash
-npm run build        # Production build in dist/
-npm run preview      # Preview production build locally
-supabase db push --linked  # Push migrations to linked project
-```
+    npm run build
 
-## Production
+## Preview
 
-1. Connect repository to Supabase project (linked project)
-2. Apply all migrations: `supabase db push`
-3. Deploy edge functions: `supabase functions deploy worker-dispatcher scheduler-dispatcher invite-member`
-4. Build and deploy the React SPA to your static hosting provider (Vercel, Netlify, Cloudflare Pages, etc.)
-5. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as environment variables in your hosting provider
-6. Set `SUPABASE_SERVICE_ROLE_KEY` as an edge function secret in the Supabase dashboard
-7. Set `VITE_DEMO_MODE=false` (or omit) for production — `seedIfEmpty()` becomes a no-op
+    npm run preview
 
-### Rollout Checklist
+## Supabase
 
-- [ ] Migrations applied cleanly (`supabase db push`)
-- [ ] Edge functions deployed and secrets set
-- [ ] RLS policies verified in `/admin/security`
-- [ ] Demo mode disabled (`VITE_DEMO_MODE` unset)
-- [ ] Smoke test: sign up, create org, import a claim, run adjudication
-- [ ] Monitor `ops_events` for unexpected error kinds
+Apply migrations:
+
+    supabase db push
+
+Deploy Edge Functions:
+
+    supabase functions deploy worker-dispatcher
+    supabase functions deploy scheduler-dispatcher
+    supabase functions deploy invite-member
+
+Configure server-side secrets through the Supabase dashboard.
+
+For a non-demo deployment:
+
+    VITE_DEMO_MODE=false
 
 ---
 
-# Performance
+# Performance and Scalability
 
-## Optimization
+DualPay is structured for scalable execution, but formal production-scale benchmarking has not been completed.
 
-All intelligence engines are pure TypeScript functions with no external I/O — they execute in microseconds in the browser. Database queries are scoped by `org_id` on indexed columns, keeping result sets small. PostgREST column selection (`?select=col1,col2`) is used throughout to avoid over-fetching.
+The architecture includes several scalability-oriented characteristics:
 
-## Caching
+- indexed organization-scoped queries;
+- deterministic pure calculation engines;
+- persisted job state;
+- server-side background execution;
+- deduplication keys;
+- private object storage;
+- TanStack Query caching;
+- Edge Function execution.
 
-TanStack Query caches all server state with configurable `staleTime` and `gcTime`. Claim lists, org metadata, and contract data are cached and refetched in the background. Executive metrics are aggregated on read; a future phase will add materialized views for high-cardinality dashboards.
+However, the project does **not** claim a specific throughput, latency target, or production load capacity without benchmark evidence.
 
-## Background Processing
+Formal load testing and high-cardinality dashboard optimization remain future work.
 
-Long-running operations (contract recovery, pipeline execution) are dispatched to Supabase Edge Functions via the `worker-dispatcher`. This removes them from the browser event loop entirely. The dead-letter queue captures failed jobs for inspection and retry without data loss.
+---
 
-## Scalability
+# Security and Compliance Positioning
 
-- Multi-tenant data isolation via `org_id` allows horizontal scaling without query interference between organizations
-- Idempotent job execution (`dedupe_key` unique index) allows safe parallel invocation
-- Edge Functions scale to zero and spin up on demand (Supabase-managed)
-- Storage objects in private buckets scale independently of the database
+DualPay includes security controls intended for healthcare-oriented application design, including:
+
+- authenticated access;
+- organization-scoped authorization;
+- PostgreSQL RLS;
+- RBAC;
+- SECURITY DEFINER function hardening;
+- append-only operational events;
+- private Storage buckets;
+- PHI-aware audit export modes;
+- data classification documentation;
+- incident response documentation;
+- risk tracking.
+
+These controls are **engineering safeguards and design objectives**.
+
+DualPay is not represented as:
+
+- HIPAA certified;
+- SOC 2 certified;
+- independently audited;
+- legally compliant for a particular healthcare deployment;
+- production-authorized for handling live PHI.
+
+Organizations deploying software in regulated environments must perform their own legal, compliance, security, privacy, and operational assessments.
+
+---
+
+# Known Limitations
+
+The following limitations are intentionally documented rather than hidden.
+
+## Live Database Verification
+
+The repository contains pgTAP verification for PostgreSQL/RLS behavior, but final execution against the target live/local Supabase environment remains pending.
+
+## Storage Verification
+
+Storage policies and tenant-isolation logic exist, but final cross-organization live Storage verification remains outstanding.
+
+## Idempotency Scope
+
+Persisted idempotency exists for important operations, including contract recovery and protected state transitions.
+
+Universal persisted idempotency across every state-changing operation is not claimed.
+
+## Lineage
+
+Core recovery lineage is implemented for:
+
+- claim creation;
+- denial detection;
+- recovery/underpayment detection;
+- case creation;
+- dispute creation;
+- outcome recording.
+
+Dedicated evidence, appeal, and executive-attribution lineage events remain roadmap items where no authoritative transactional boundary currently exists.
+
+## Executive Attribution
+
+Executive recovery metrics are currently derived from persisted recovery data.
+
+A dedicated `executive_value_attributed` transactional event is not implemented because there is currently no authoritative persisted attribution operation.
+
+## MFA
+
+MFA-related schema support exists, but enforced TOTP/MFA authorization is roadmap work.
+
+## Performance
+
+Formal production load testing has not been completed.
+
+## Production Deployment
+
+The repository contains deployment procedures, but DualPay is not represented as a commercially deployed healthcare production system.
 
 ---
 
 # Roadmap
 
-## Current Release
+## Near Term
 
-- ✅ Core adjudication engine with COB (all four policy types, hardened)
-- ✅ CARC/RARC denial intelligence with next-action and playbook recommendations
-- ✅ Contract intelligence — import, match, underpayment detection, dispute generation
-- ✅ Server-side contract recovery with idempotent dispute writes
-- ✅ Autonomous recovery pipeline (7-step orchestrated job chain)
-- ✅ X12 EDI Gateway — 835, 837P, 837I parse, validate, normalize
-- ✅ Remittance lineage (row → claim → dispute → case → outcome)
-- ✅ Evidence Vault with versioning and appeal packet generator
-- ✅ Executive Intelligence — value realization, payer scorecards, playbook effectiveness
-- ✅ Identity & RBAC with org-scoped RLS
-- ✅ Production hardening — NOT NULL org_id, tightened RLS, PHI-safe audit export
-- ✅ Operational workflows — assignment, worklist, appeal lifecycle, recovery events
+- Execute final live pgTAP/RLS verification.
+- Complete live Storage tenant-isolation verification.
+- Complete live audit-immutability verification.
+- Expand integration coverage around authenticated Supabase behavior.
+- Formalize benchmark methodology.
 
-## Next Release
+## Product
 
-- [ ] **EDI auto-promote** — wire normalized 835/837 output into `remittance_batches` / `claims` rows automatically
-- [ ] **Idempotency key persistence** — persist in-memory idempotency keys to Supabase to survive page reloads
-- [ ] **Automation rule config editor** — in-app UI for editing rule thresholds and actions
-- [ ] **Lineage completion** — emit `case_created`, `outcome_recorded`, and `executive_value_attributed` lineage events
-- [ ] **TypeScript strict mode** — enable `noImplicitAny` and `strictNullChecks`
-- [ ] **Background scheduler** — replace synchronous browser-triggered pipelines with cron-based scheduled execution
+- EDI auto-promotion into normalized claim/remittance records.
+- Automation rule configuration UI.
+- Additional appeal/evidence lineage where authoritative lifecycle boundaries are introduced.
+- Broader payer integration workflows.
 
-## Future Vision
+## Enterprise
 
-- Real-time SLA alerting with push notifications for breach risk
-- Direct payer API integrations for 270/271 eligibility and 276/277 claim status queries
-- Bulk dispute packet transmission to payers
-- SNIP-2/3 payer-business EDI validation and 270/271/277/278/999/TA1 normalizers
-- Multi-org hierarchy (holding company / health system model)
-- Observability stack (metrics, distributed tracing, alerting, error budgets)
-- SSO, TOTP MFA, and password rotation policies
-- Materialized views for executive dashboard performance at scale
-- AI-assisted denial pattern analysis and appeal recommendation
+- SSO.
+- TOTP MFA enforcement.
+- Multi-organization hierarchy.
+- Expanded observability.
+- Distributed tracing.
+- Alerting and error budgets.
+- Materialized views for high-cardinality reporting.
+
+## EDI
+
+Future transaction support may include:
+
+- 270/271 eligibility;
+- 276/277 claim status;
+- 278 authorization;
+- 999;
+- TA1;
+- additional payer validation levels.
+
+## Intelligence
+
+Future work may explore AI-assisted:
+
+- denial pattern analysis;
+- appeal recommendations;
+- workflow assistance.
+
+The current financial decision path remains deterministic.
 
 ---
 
 # Documentation
 
-| Document | Description |
-|----------|-------------|
-| `DEV_SETUP.md` | Development environment setup, dev user creation, RLS troubleshooting, role hierarchy |
-| `docs/SECURITY.md` | Security architecture, threat model, and controls |
-| `docs/HIPAA_OVERVIEW.md` | HIPAA applicability, PHI handling, safeguards |
-| `docs/ACCESS_CONTROL_POLICY.md` | RBAC model, RLS policy inventory, access audit framework |
-| `docs/DATA_CLASSIFICATION.md` | Data sensitivity tiers and handling requirements |
-| `docs/INCIDENT_RESPONSE_PLAN.md` | Security incident detection, containment, and notification procedures |
-| `docs/RISK_REGISTER.md` | Known risks, likelihood, impact, and mitigation status |
-| `HARDENING_PR_SUMMARY.md` | COB Rules Engine hardening PR — bugs fixed, test coverage, breaking changes |
-| `PATCH_REPORT_PHASE1.md` | Phase 1 patch report — MOB COB fix, idempotency tests, remaining risks |
-| `PHASE_3A_SUMMARY.md` | Phase 3A operational workflow foundation — schema, functions, tests |
+| Document | Purpose |
+|---|---|
+| `DEV_SETUP.md` | Development setup and troubleshooting |
+| `docs/SECURITY.md` | Security architecture and threat model |
+| `docs/HIPAA_OVERVIEW.md` | Healthcare data and safeguard considerations |
+| `docs/ACCESS_CONTROL_POLICY.md` | RBAC and access-control framework |
+| `docs/DATA_CLASSIFICATION.md` | Data sensitivity and handling |
+| `docs/INCIDENT_RESPONSE_PLAN.md` | Incident response procedures |
+| `docs/RISK_REGISTER.md` | Known risks and mitigations |
+| `HARDENING_PR_SUMMARY.md` | Hardening history |
+| `PATCH_REPORT_PHASE1.md` | Phase 1 remediation history |
+| `PHASE_3A_SUMMARY.md` | Operational workflow foundation |
 
 ---
 
 # Screenshots
 
-> Add screenshots, diagrams, dashboards, or workflow illustrations.
+Screenshots and architecture diagrams will be added as the visual demonstration package is finalized.
+
+The repository's primary evidence remains the source code, migrations, tests, and documented verification procedures.
+
+---
+
+# Engineering Approach
+
+DualPay was developed using an iterative engineering and audit process:
+
+    Build
+      ↓
+    Test
+      ↓
+    Audit
+      ↓
+    Identify Gaps
+      ↓
+    Remediate
+      ↓
+    Retest
+      ↓
+    Document
+
+Several hardening passes focused specifically on:
+
+- tenant isolation;
+- database authorization;
+- privileged function boundaries;
+- scheduler correctness;
+- durable job execution;
+- retry/DLQ behavior;
+- idempotency;
+- replay;
+- audit immutability;
+- recovery lineage;
+- X12 verification.
+
+The project intentionally distinguishes between what is implemented and what has been independently or live-environment verified.
 
 ---
 
 # Contributing
 
-1. **Branch strategy** — feature branches off `main` using `feat/`, `fix/`, `docs/`, `chore/` prefixes
-2. **Coding conventions** — TypeScript throughout; no `any` in engine files; Zod for all external data shapes
-3. **Do not duplicate engines** — extend existing intelligence; never copy logic from one engine to another
-4. **Test coverage** — all engine changes require corresponding Vitest tests; target 100% coverage on critical path files
-5. **Audit trail** — new workflow actions must emit a typed `ops_events` kind
-6. **RLS discipline** — new tables must include `org_id NOT NULL` with a corresponding RLS policy; no globally permissive policies
-7. **Pull requests** — include a summary of what changed, what was reused, remaining limitations, and typecheck status (`tsc --noEmit`)
-8. **Breaking changes** — document explicitly; COB policy type errors are an example of an intentional breaking change that was previously a silent failure
+For development changes:
+
+1. Create a feature branch from `main`.
+2. Use descriptive branch prefixes such as:
+   - `feat/`
+   - `fix/`
+   - `docs/`
+   - `chore/`
+3. Extend existing engines rather than duplicating business logic.
+4. Add tests for engine and workflow changes.
+5. Preserve organization-scoped authorization.
+6. Do not expose service-role credentials to the browser.
+7. New workflow actions should emit appropriate typed operational events where an authoritative lifecycle boundary exists.
+8. Do not weaken RLS or authorization controls to make tests pass.
 
 ---
 
 # License
 
-Proprietary. All rights reserved. © 2026 Valtaris Technologies.
+See the repository license configuration.
 
 ---
 
@@ -756,23 +1261,4 @@ Proprietary. All rights reserved. © 2026 Valtaris Technologies.
 
 **George Rios**
 
-Founder & Software Engineer
-
-**Valtaris Technologies**
-
----
-
-# Acknowledgements
-
-- [Supabase](https://supabase.com) — Postgres, Auth, Storage, and Edge Functions platform
-- [React](https://react.dev) — UI component model
-- [Vite](https://vitejs.dev) — build tooling
-- [Tailwind CSS](https://tailwindcss.com) — utility-first CSS
-- [shadcn/ui](https://ui.shadcn.com) — accessible component primitives built on Radix UI
-- [TanStack Query](https://tanstack.com/query) — server state management
-- [Recharts](https://recharts.org) — composable charting library
-- [Zod](https://zod.dev) — TypeScript-first schema validation
-- [Vitest](https://vitest.dev) — fast unit testing powered by Vite
-- [jsPDF](https://github.com/parallax/jsPDF) — client-side PDF generation
-- [xlsx](https://github.com/SheetJS/sheetjs) — spreadsheet parsing and export
-- The X12 Standards organization for healthcare EDI transaction specifications
+DualPay Core Ledger is an independent engineering project exploring deterministic healthcare reimbursement systems, secure multi-tenant application architecture, durable workflow execution, and auditable revenue-recovery operations.
