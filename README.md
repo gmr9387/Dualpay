@@ -1,4 +1,5 @@
 DualPay Core Ledger
+
 A healthcare reimbursement system for structured adjudication, denial intelligence, contract recovery, durable background execution, and auditable financial workflows.
 
 DualPay Core Ledger is a reimbursement operations system designed to unify claims, remittance information, reimbursement calculations, denial classification, contract analysis, recovery workflows, evidence, appeals, and outcomes into one auditable workflow.
