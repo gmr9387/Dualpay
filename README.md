@@ -4,12 +4,21 @@ A healthcare reimbursement system built to connect claims, remittance informatio
 DualPay is a portfolio engineering project and research implementation. It is not represented as HIPAA certified, SOC 2 certified, or commercially production deployed.
 
 Overview
-Healthcare reimbursement data is scattered across claims, remittance files, denial codes, payer contracts, evidence, appeals, assignments, and recovery outcomes. DualPay brings these pieces together in one system.
+DualPay brings together reimbursement information that is usually scattered across claims, remittance files, denial codes, payer contracts, evidence, appeals, assignments, and recovery outcomes.
 
-The design is simple. Claims and remittance lines enter the system. They are validated and normalized. Deterministic engines apply reimbursement rules. Denials and underpayments are detected. Recovery workflows move forward. Every step is recorded.
+The design is simple.
+Claims and remittance lines enter the system.
+They are validated and normalized.
+Deterministic engines apply reimbursement rules.
+Denials and underpayments are detected.
+Recovery workflows move forward.
+Every step is recorded.
 
 Why This Exists
-Reimbursement problems are not just calculation problems. They are workflow problems. They are audit problems. They involve multiple systems, multiple rules, and multiple decisions that must be traceable.
+Reimbursement problems are not just calculation problems.
+They are workflow problems.
+They are audit problems.
+They involve multiple systems, multiple rules, and multiple decisions that must be traceable.
 
 DualPay explores how these processes can be represented as a deterministic, multi tenant application with durable background execution and database enforced authorization.
 
@@ -77,8 +86,6 @@ Pipeline orchestration
 Job telemetry
 
 Capability Status
-DualPay separates implementation from evidence. Some parts are proven. Some parts need more verification. Some parts are planned.
-
 Implemented and Evidence Verified
 Security definer boundaries
 Durable jobs
@@ -114,11 +121,29 @@ External certification
 Regulated production authorization
 
 Architecture
-DualPay has three layers.
+Frontend
+React application
+TypeScript
+Vite
+Tailwind
+shadcn
+TanStack Query
 
-The frontend is a React application.
-The backend is Supabase.
-The engine layer performs deterministic reimbursement logic.
+Backend
+Supabase
+PostgreSQL
+PostgREST
+Supabase Auth
+Supabase Storage
+Edge Functions
+
+Engine Layer
+Deterministic reimbursement logic
+COB rules
+Denial intelligence
+Contract matching
+Underpayment detection
+Replay and fingerprinting
 
 Everything is stored in PostgreSQL.
 Everything is organization scoped.
@@ -202,16 +227,24 @@ Relationships connect claims to adjudication runs, remittance lines to disputes,
 Indexes support organization scoped queries and recovery workflows.
 
 Background Processing
-DualPay uses durable jobs for work that should not depend on a browser session.
+Job Lifecycle
+queued
+claimed
+running
+completed
+failed
+retry
+dead letter
 
-Jobs move through queued, claimed, running, completed, failed, retry, and dead letter states.
-
-The scheduler dispatches work and records results.
+Scheduler
+Dispatches work
+Records results
+Persists failure telemetry
 
 X12 EDI
-DualPay processes X12 835, 837P, and 837I transactions.
+Processes X12 835, 837P, and 837I transactions.
 
-The pipeline includes parsing, envelope validation, structural validation, normalization, and canonical representation.
+Pipeline includes parsing, envelope validation, structural validation, normalization, and canonical representation.
 
 Lineage and Auditability
 DualPay records lineage for claim creation, denial detection, underpayment detection, case creation, dispute creation, and outcomes.
@@ -219,9 +252,12 @@ DualPay records lineage for claim creation, denial detection, underpayment detec
 Evidence and appeal lineage are planned.
 
 Replay and Idempotency
-DualPay includes replay records, fingerprints, deterministic adjudication, and deduplication keys.
-
-Persisted idempotency exists for important operations. Universal idempotency is not claimed.
+Replay records
+Fingerprints
+Deterministic adjudication
+Deduplication keys
+Persisted idempotency for important operations
+Universal idempotency not claimed
 
 Technology Stack
 React
@@ -235,12 +271,6 @@ PostgreSQL
 Edge Functions
 Vitest
 pgTAP
-
-Project Structure
-Frontend code in src
-Database migrations in supabase
-Edge functions in supabase functions
-Documentation in docs
 
 Installation
 Clone the repository
@@ -256,11 +286,20 @@ Demo mode flag
 Server side secrets configured in Supabase
 
 Testing and Verification
-Application tests cover adjudication, COB, workflows, scheduler behavior, retry behavior, lineage, RLS behavior, storage logic, and X12 processing.
+Application Tests
+Adjudication
+COB
+Workflows
+Scheduler behavior
+Retry behavior
+Lineage
+RLS behavior
+Storage logic
+X12 processing
 
-Database tests verify RLS and security boundaries.
-
-Live database verification remains pending.
+Database Tests
+pgTAP suite for RLS and security boundaries
+Live database verification pending
 
 Deployment
 Build the application
