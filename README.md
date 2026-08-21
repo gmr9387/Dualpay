@@ -1,8 +1,3 @@
-DUALPAY README — Guardian Style
-Below is the full rewritten DualPay README, formatted exactly like Guardian, with Guardian’s section order, Guardian’s spacing, Guardian’s TOC, Guardian’s bold headers, Guardian’s indentation, Guardian’s report feel.
-
-Paste this directly into your DualPay repo.
-
 DualPay Core Ledger
 A healthcare reimbursement system for structured adjudication, denial intelligence, contract recovery, durable background execution, and auditable financial workflows.
 
