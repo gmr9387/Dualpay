@@ -1,263 +1,447 @@
+DUALPAY README — Guardian Style
+Below is the full rewritten DualPay README, formatted exactly like Guardian, with Guardian’s section order, Guardian’s spacing, Guardian’s TOC, Guardian’s bold headers, Guardian’s indentation, Guardian’s report feel.
+
+Paste this directly into your DualPay repo.
+
 DualPay Core Ledger
-A healthcare reimbursement system built to connect claims, remittance information, reimbursement calculations, denial intelligence, contract analysis, recovery operations, evidence, appeals, and outcomes in one auditable workflow. DualPay is built around deterministic financial logic, organization scoped authorization, durable background processing, persisted workflow state, and clear auditability.
+A healthcare reimbursement system for structured adjudication, denial intelligence, contract recovery, durable background execution, and auditable financial workflows.
 
-DualPay is a portfolio engineering project and research implementation. It is not represented as HIPAA certified, SOC 2 certified, or commercially production deployed.
+DualPay Core Ledger is a reimbursement operations system designed to unify claims, remittance information, reimbursement calculations, denial classification, contract analysis, recovery workflows, evidence, appeals, and outcomes into one auditable workflow.
 
+It is a portfolio engineering project and research implementation. It is not represented as HIPAA certified, SOC 2 certified, or commercially production deployed.
+
+Table of Contents
 Overview
-DualPay brings together reimbursement information that is usually scattered across claims, remittance files, denial codes, payer contracts, evidence, appeals, assignments, and recovery outcomes.
 
-The design is simple.
-Claims and remittance lines enter the system.
-They are validated and normalized.
-Deterministic engines apply reimbursement rules.
-Denials and underpayments are detected.
-Recovery workflows move forward.
-Every step is recorded.
+The Problem
 
-Why This Exists
-Reimbursement problems are not just calculation problems.
-They are workflow problems.
-They are audit problems.
-They involve multiple systems, multiple rules, and multiple decisions that must be traceable.
+Design Objective
 
-DualPay explores how these processes can be represented as a deterministic, multi tenant application with durable background execution and database enforced authorization.
-
-What DualPay Does
-Reimbursement and Adjudication
-Fee schedules
-Deductibles
-Coinsurance
-Accumulators
-Multiple payer allocation
-Primacy validation
-Deterministic rounding
-Adjudication traces
-Replay records
-
-Denial Intelligence
-CARC and RARC classification
-Recoverability scoring
-Severity scoring
-Evidence requirements
-Recommended actions
-Playbook assignment
-
-Contract Recovery
-Contract matching
-Effective date selection
-Fee schedule matching
-Fixed reimbursement
-Case reimbursement
-Per diem reimbursement
-Percent of billed reimbursement
-Percent of Medicare reimbursement
-Expected reimbursement calculation
-Variance detection
-Idempotent dispute creation
-
-X12 EDI
-Native processing for
-835 remittance
-837P professional claims
-837I institutional claims
-
-Includes parsing, validation, envelope checks, and normalization.
-
-Recovery Operations
-Cases
-Disputes
-Assignments
-Worklists
-Evidence
-Appeal packets
-Appeal lifecycle
-Recovery outcomes
-Payer scorecards
-Recovery reporting
-
-Automation
-Durable jobs
-Server side workers
-Scheduler dispatch
-Retry handling
-Exponential backoff
-Dead letter queue
-Pipeline orchestration
-Job telemetry
-
-Capability Status
-Implemented and Evidence Verified
-Security definer boundaries
-Durable jobs
-Scheduler
-Retry and dead letter behavior
-Contract recovery
-Denial detection
-
-Implemented and Validation Pending
-Multi tenant organization model
-PostgreSQL RLS
-RBAC
-Ops event immutability
-Storage isolation
-X12 835
-X12 837P
-X12 837I
-Replay verification
-Persisted idempotency
-Recovery lineage
-Recovered value attribution
-
-Roadmap
-Evidence lineage
-Appeal lineage
-Executive attribution
-MFA enforcement
-Performance benchmarking
-Commercial deployment
-
-Not Implemented or Not Authorized
-External certification
-Regulated production authorization
+Core Capabilities
 
 Architecture
-Frontend
-React application
-TypeScript
-Vite
-Tailwind
-shadcn
-TanStack Query
 
-Backend
-Supabase
-PostgreSQL
-PostgREST
-Supabase Auth
-Supabase Storage
-Edge Functions
+Decision Model
 
-Engine Layer
-Deterministic reimbursement logic
-COB rules
-Denial intelligence
-Contract matching
-Underpayment detection
-Replay and fingerprinting
+Execution Model
 
-Everything is stored in PostgreSQL.
-Everything is organization scoped.
-Everything is auditable.
+Risk Controls
 
-Core Workflows
-Claim and Remittance Import
-CSV or X12
+Trader Intelligence
+
+Data Architecture
+
+Security
+
+Realtime Operations
+
+Engineering Decisions
+
+Engineering Incidents
+
 Validation
-Mapping
-Batch commit
-Claims and remittance lines
-Lineage
 
-Denial Detection
+Current Capability Status
+
+Known Limitations
+
+Roadmap
+
+Technology Stack
+
+Project Structure
+
+Local Development
+
+Configuration
+
+Project Status
+
+Documentation and Evidence
+
+Author
+
+Overview
+DualPay addresses a recurring problem in healthcare reimbursement operations.
+
+Claims, remittance files, denial codes, payer contracts, evidence, appeals, assignments, and recovery outcomes are often scattered across multiple systems. DualPay brings these workflows together in one place.
+
+The objective is not to predict reimbursement with an opaque model.
+The objective is to make reimbursement logic structured, deterministic, inspectable, and operationally actionable.
+
+The Problem
+Healthcare reimbursement involves multiple interacting systems and rules.
+
+text
+Claim
+   ↓
 Remittance
-Classification
+   ↓
+Contract
+   ↓
 Denial
-Denial detected
-Recovery analysis
+   ↓
+Evidence
+   ↓
+Appeal
+   ↓
+Outcome
+A reimbursement discrepancy becomes more than a calculation problem.
+It becomes a workflow and auditability problem.
+
+DualPay treats reimbursement as an operations problem, not just a billing problem.
+
+Design Objective
+DualPay is designed around five principles.
+
+1. Deterministic Financial Logic
+Given the same claim, remittance, and contract inputs, the system should produce the same reimbursement result.
+
+2. Inspectability
+A user should be able to inspect reimbursement logic rather than trust an unexplained output.
+
+3. Risk-Aware Recovery
+Detection of an underpayment does not automatically authorize recovery.
+Recovery workflows include checks, evidence, and structured decision paths.
+
+4. Separation of Domain State and Presentation
+Database state represents the actual system state.
+The UI translates that state into human-readable terminology.
+
+5. Durable Background Execution
+Important reimbursement workflows should not depend on a browser session remaining open.
+
+Core Capabilities
+Claim and Remittance Processing
+DualPay processes:
+
+X12 835 remittance
+
+X12 837P professional claims
+
+X12 837I institutional claims
+
+The pipeline includes parsing, validation, normalization, and canonical representation.
+
+Deterministic Adjudication
+The reimbursement engine applies explicit rules for:
+
+fee schedules
+
+deductibles
+
+coinsurance
+
+accumulators
+
+multiple payers
+
+COB logic
+
+rounding
+
+traces
+
+replay
+
+Denial Intelligence
+DualPay evaluates:
+
+CARC and RARC codes
+
+recoverability
+
+severity
+
+evidence requirements
+
+recommended actions
 
 Contract Recovery
-Candidate discovery
-Contract matching
-Expected reimbursement
-Variance
-Underpayment dispute
-Underpayment detected
-Dispute created
+DualPay compares actual reimbursement against expected reimbursement.
 
-Case Generation
-Recovery opportunity
-Case creation
-Case claim links
-Case created
+Supported reimbursement types include:
 
-Denial Recovery Workflow
-Denial
-Recoverability
-Assignment
-Evidence
-Appeal packet
-Appeal
-Outcome
+fixed
 
-Security Architecture
-Authentication
-Supabase Auth provides identity.
-Authorization uses organization membership and role checks.
+case
 
-Authorization
-Five roles
-viewer
-analyst
-manager
-admin
-owner
+per diem
 
-Authorization is enforced through RLS, security definer functions, and application guards.
+percent of billed
 
-Multi Tenant Isolation
-Records are organization scoped.
-Policies enforce isolation.
-Tests verify isolation boundaries.
+percent of Medicare
 
-Security Definer Functions
-Reviewed for safe search path, membership checks, and role checks.
+Underpayment disputes use deterministic deduplication keys.
 
-Audit Logging
-Ops events are append only.
-Events record actor, organization, event kind, references, payload, and timestamp.
+Recovery Operations
+DualPay supports:
 
-Input Validation
-Validation occurs at import, X12 parsing, Zod schemas, and database constraints.
+cases
 
-Database Design
-DualPay uses PostgreSQL domains for claims, adjudication, replay, idempotency, operations, cases, recovery, import, evidence, contracts, automation, EDI, lineage, and identity.
+disputes
 
-Relationships connect claims to adjudication runs, remittance lines to disputes, cases to claims, and outcomes to reporting.
+assignments
 
-Indexes support organization scoped queries and recovery workflows.
+evidence
 
-Background Processing
-Job Lifecycle
-queued
-claimed
-running
-completed
-failed
+appeal packets
+
+appeal lifecycle
+
+outcomes
+
+reporting
+
+Automation
+DualPay includes:
+
+durable jobs
+
+server-side workers
+
+scheduler
+
 retry
+
 dead letter
 
-Scheduler
-Dispatches work
-Records results
-Persists failure telemetry
+pipeline orchestration
 
-X12 EDI
-Processes X12 835, 837P, and 837I transactions.
+telemetry
 
-Pipeline includes parsing, envelope validation, structural validation, normalization, and canonical representation.
+Architecture
+text
+┌──────────────────────────────────────────────────────────┐
+│                     React Application                    │
+│                                                          │
+│ Claims · Remittance · Recovery · Evidence · Appeals      │
+│ Automation · Reporting · Administration                  │
+└─────────────────────────┬────────────────────────────────┘
+                          │
+                          │ Supabase Client
+                          ▼
+┌──────────────────────────────────────────────────────────┐
+│                    Supabase Platform                     │
+│                                                          │
+│ PostgreSQL · Auth · Storage · Edge Functions             │
+│                                                          │
+│ Domain State · Identity · Background Execution           │
+└─────────────────────────┬────────────────────────────────┘
+                          │
+                          ▼
+┌──────────────────────────────────────────────────────────┐
+│                    Deterministic Engines                 │
+│                                                          │
+│ Adjudication · COB · Denial · Contract Recovery          │
+│ X12 Parsing · Replay · Fingerprinting                    │
+└──────────────────────────────────────────────────────────┘
+Decision Model
+DualPay separates reimbursement decisions into distinct stages.
 
-Lineage and Auditability
-DualPay records lineage for claim creation, denial detection, underpayment detection, case creation, dispute creation, and outcomes.
+text
+1. Claim
+   ↓
+2. Remittance
+   ↓
+3. Adjudication
+   ↓
+4. Denial Detection
+   ↓
+5. Contract Recovery
+   ↓
+6. Recovery Workflow
+   ↓
+7. Outcome
+Execution Model
+Recovery is modeled as an explicit workflow.
 
-Evidence and appeal lineage are planned.
+text
+Underpayment
+   ↓
+Candidate
+   ↓
+Evidence
+   ↓
+Appeal Packet
+   ↓
+Appeal
+   ↓
+Outcome
+Risk Controls
+DualPay includes controls for:
+
+recovery eligibility
+
+evidence requirements
+
+appeal readiness
+
+assignment
+
+authorization
+
+persisted configuration
+
+Trader Intelligence
+DualPay does not include trader intelligence.
+This section is intentionally omitted for DualPay.
+
+Data Architecture
+DualPay uses PostgreSQL for:
+
+claims
+
+remittance lines
+
+adjudication runs
+
+traces
+
+replay
+
+idempotency
+
+cases
+
+disputes
+
+outcomes
+
+evidence
+
+contracts
+
+automation
+
+lineage
+
+identity
+
+Security
+DualPay includes:
+
+authenticated access
+
+organization boundaries
+
+RLS
+
+RBAC
+
+security definer functions
+
+append-only operational events
+
+private storage buckets
+
+DualPay is not represented as HIPAA certified or SOC 2 certified.
+
+Realtime Operations
+DualPay uses Supabase Realtime for responsive updates.
+
+text
+Database Event
+      ↓
+Realtime
+      ↓
+React Subscription
+      ↓
+UI Update
+Engineering Decisions
+Centralized Adjudication
+Authoritative reimbursement logic is centralized in server-side engines.
+
+RLS Enforcement
+Authorization is enforced at the database boundary.
+
+Durable Jobs
+Important workflows run through durable background execution.
 
 Replay and Idempotency
-Replay records
-Fingerprints
-Deterministic adjudication
-Deduplication keys
-Persisted idempotency for important operations
-Universal idempotency not claimed
+Replay records and deduplication keys prevent duplicate operations.
+
+Engineering Incidents
+DualPay produced several useful corrections:
+
+lineage boundaries clarified
+
+idempotency scope corrected
+
+scheduler failure handling improved
+
+storage isolation tested
+
+X12 validation hardened
+
+Validation
+Validation includes:
+
+adjudication tests
+
+COB tests
+
+denial tests
+
+contract recovery tests
+
+scheduler tests
+
+retry tests
+
+lineage tests
+
+RLS tests
+
+X12 tests
+
+Current Capability Status
+Capability	Status
+Adjudication	Implemented
+COB	Implemented
+Denial detection	Implemented
+Contract recovery	Implemented
+Durable jobs	Implemented
+Scheduler	Implemented
+Replay	Implemented
+Idempotency	Partial
+X12 835	Implemented
+X12 837P	Implemented
+X12 837I	Implemented
+Storage isolation	Validation pending
+RLS	Validation pending
+RBAC	Validation pending
+Evidence lineage	Roadmap
+Appeal lineage	Roadmap
+Executive attribution	Roadmap
+Production deployment	Not claimed
+
+
+Known Limitations
+live database verification pending
+
+storage verification pending
+
+idempotency not universal
+
+lineage incomplete
+
+no production load testing
+
+no compliance certification
+
+Roadmap
+evidence lineage
+
+appeal lineage
+
+executive attribution
+
+performance testing
+
+compliance posture
+
+production deployment
 
 Technology Stack
 React
@@ -272,7 +456,28 @@ Edge Functions
 Vitest
 pgTAP
 
-Installation
+Project Structure
+text
+dualpay-core-ledger/
+│
+├── src/
+│   ├── engine/
+│   ├── pages/
+│   ├── components/
+│   ├── hooks/
+│   ├── data/
+│   ├── lib/
+│   ├── types/
+│   └── test/
+│
+├── supabase/
+│   ├── migrations/
+│   └── functions/
+│
+├── docs/
+├── public/
+└── README.md
+Local Development
 Clone the repository
 Install dependencies
 Create environment file
@@ -280,55 +485,37 @@ Push migrations
 Run development server
 
 Configuration
-Supabase URL
-Supabase anon key
-Demo mode flag
-Server side secrets configured in Supabase
+DualPay requires:
 
-Testing and Verification
-Application Tests
-Adjudication
-COB
-Workflows
-Scheduler behavior
-Retry behavior
-Lineage
-RLS behavior
-Storage logic
-X12 processing
+VITE_SUPABASE_URL
+VITE_SUPABASE_ANON_KEY
 
-Database Tests
-pgTAP suite for RLS and security boundaries
-Live database verification pending
+Server-side secrets must remain outside browser-exposed variables.
 
-Deployment
-Build the application
-Deploy edge functions
-Configure secrets
-Run migrations
+Project Status
+Active development.
+DualPay is a substantial implementation with clear architecture.
+Many parts are supported by evidence.
+Some parts need more verification.
 
-Performance and Scalability
-DualPay is structured for scalable execution.
-Formal benchmarking has not been completed.
-No throughput or latency claims are made.
+Documentation and Evidence
+source code
 
-Security and Compliance Positioning
-DualPay includes security controls for healthcare oriented design.
-DualPay is not represented as HIPAA certified, SOC 2 certified, audited, or production authorized.
+migrations
 
-Known Limitations
-Live database verification pending
-Storage verification pending
-Idempotency scope limited
-Lineage incomplete for evidence and appeals
+workflows
 
-Roadmap
-Evidence lineage
-Appeal lineage
-Executive attribution
-Performance testing
-Compliance posture
-Production deployment
+tests
 
-Current Status
-DualPay has a substantial implementation and a clear architecture. Many parts are supported by evidence. Some parts need more verification. DualPay is ready for deeper validation and real world testing.
+lineage
+
+replay
+
+telemetry
+
+database schema
+
+Author
+George Rios
+
+Independent product engineer focused on complete software systems across product design, application architecture, database systems, workflow automation, security boundaries, and operational tooling.
