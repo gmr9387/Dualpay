@@ -1,28 +1,21 @@
-// src/nucleus/subsystems/dualpay/dualpayPaymentOpenApi.ts
+// src/nucleus/subsystems/dualpay/dualpayOpenApi.ts
 
-export const DualpayPaymentOpenApi = {
+import { DualpayAdjudicationOpenApi } from "./dualpayAdjudicationOpenApi";
+import { DualpayCobOpenApi } from "./dualpayCobOpenApi";
+import { DualpayDenialOpenApi } from "./dualpayDenialOpenApi";
+import { DualpayRecoveryOpenApi } from "./dualpayRecoveryOpenApi";
+import { DualpayEvidenceOpenApi } from "./dualpayEvidenceOpenApi";
+import { DualpayPaymentOpenApi } from "./dualpayPaymentOpenApi";
+import { DualpayLineageOpenApi } from "./dualpayLineageOpenApi";
+
+export const DualpayOpenApi = {
   paths: {
-    "/dualpay/payment/run": {
-      post: {
-        summary: "Execute DualPay payment engine",
-        requestBody: {
-          required: true,
-          content: {
-            "application/json": { schema: { type: "object" } }
-          }
-        },
-        responses: {
-          200: { description: "Payment decision result" }
-        }
-      }
-    },
-    "/dualpay/payment/health": {
-      get: {
-        summary: "DualPay payment health",
-        responses: {
-          200: { description: "Health status" }
-        }
-      }
-    }
+    ...DualpayAdjudicationOpenApi.paths,
+    ...DualpayCobOpenApi.paths,
+    ...DualpayDenialOpenApi.paths,
+    ...DualpayRecoveryOpenApi.paths,
+    ...DualpayEvidenceOpenApi.paths,
+    ...DualpayPaymentOpenApi.paths,
+    ...DualpayLineageOpenApi.paths,
   }
 };
