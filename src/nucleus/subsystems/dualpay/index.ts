@@ -38,3 +38,9 @@ export * from "./dualpayRecoveryRouter";
 export * from "./dualpayEvidenceRuntime";
 export * from "./dualpayEvidenceController";
 export * from "./dualpayEvidenceRouter";
+
+// Phase 6 — Payment Engine
+export * from "./dualpayPaymentRuntime";
+export * from "./dualpayPaymentController";
+export * from "./dualpayPaymentRouter";
+export * from "./dualpayPaymentOpenApi";
