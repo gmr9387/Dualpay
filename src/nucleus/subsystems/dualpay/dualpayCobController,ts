@@ -1,0 +1,17 @@
+// src/nucleus/subsystems/dualpay/dualpayCobController.ts
+
+import { DualpayCobRuntime } from "./dualpayCobRuntime";
+
+export class DualpayCobController {
+  constructor(private organizationId: string) {}
+
+  async execute(payload: any) {
+    const runtime = new DualpayCobRuntime(this.organizationId);
+    return runtime.run(payload);
+  }
+
+  async health() {
+    const runtime = new DualpayCobRuntime(this.organizationId);
+    return runtime.health();
+  }
+}
