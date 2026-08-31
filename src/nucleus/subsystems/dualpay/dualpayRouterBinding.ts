@@ -6,6 +6,8 @@ import { dualpayCobRouter } from "./dualpayCobRouter";
 import { dualpayDenialRouter } from "./dualpayDenialRouter";
 import { dualpayRecoveryRouter } from "./dualpayRecoveryRouter";
 import { dualpayEvidenceRouter } from "./dualpayEvidenceRouter";
+import { dualpayPaymentRouter } from "./dualpayPaymentRouter";
+import { dualpayLineageRouter } from "./dualpayLineageRouter";
 
 export function bindDualpayRoutes(app: any) {
   app.use("/dualpay", dualpayRouter());
@@ -14,4 +16,6 @@ export function bindDualpayRoutes(app: any) {
   app.use("/dualpay", dualpayDenialRouter());
   app.use("/dualpay", dualpayRecoveryRouter());
   app.use("/dualpay", dualpayEvidenceRouter());
+  app.use("/dualpay", dualpayPaymentRouter());
+  app.use("/dualpay", dualpayLineageRouter());
 }
