@@ -24,7 +24,6 @@ export class DualpayPaymentRuntime {
         paymentDecision: null as any,
       };
 
-      // Simple decision logic based on prior outcomes
       if (payload.denialOutcome?.status === "denied") {
         result.paymentDecision = {
           status: "no-pay",
