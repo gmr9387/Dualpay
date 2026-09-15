@@ -15,16 +15,21 @@
 //
 // Required secrets (set via `supabase secrets set`, same as
 // nucleus-adjudicate — never in .env):
-//   NUCLEUS_API_URL   e.g. https://bpqukcsaoporhvdtfyza.supabase.co/functions/v1/weaver-score
-//   NUCLEUS_API_KEY   the x-api-key value nucleus issued for this client_id ("dualpay")
-//                      — the SAME key nucleus-adjudicate uses; one credential
-//                      authorizes both nucleus endpoints.
+//   NUCLEUS_WEAVER_SCORE_URL   https://bpqukcsaoporhvdtfyza.supabase.co/functions/v1/weaver-score
+//   NUCLEUS_API_KEY            the x-api-key value nucleus issued for this client_id ("dualpay")
+//                              — the SAME key nucleus-adjudicate uses; one credential
+//                              authorizes both nucleus endpoints.
+//
+// NUCLEUS_WEAVER_SCORE_URL is named per-function on purpose: Supabase
+// Edge Function secrets are project-wide, not scoped to one function, so
+// a plain "NUCLEUS_API_URL" would collide with nucleus-adjudicate's own
+// (different) URL secret the moment both are set.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const NUCLEUS_API_URL = Deno.env.get('NUCLEUS_API_URL');
+const NUCLEUS_API_URL = Deno.env.get('NUCLEUS_WEAVER_SCORE_URL');
 const NUCLEUS_API_KEY = Deno.env.get('NUCLEUS_API_KEY');
 
 interface NucleusWeaverScoreRequest {
@@ -40,7 +45,7 @@ Deno.serve(async (req) => {
 
   if (!NUCLEUS_API_URL || !NUCLEUS_API_KEY) {
     const message =
-      'Nucleus Weaver scoring is not configured: set NUCLEUS_API_URL and NUCLEUS_API_KEY as Edge Function secrets (supabase secrets set ...).';
+      'Nucleus Weaver scoring is not configured: set NUCLEUS_WEAVER_SCORE_URL and NUCLEUS_API_KEY as Edge Function secrets (supabase secrets set ...).';
     await client.from('ops_events').insert([{
       event_id: crypto.randomUUID(),
       occurred_at: new Date().toISOString(),

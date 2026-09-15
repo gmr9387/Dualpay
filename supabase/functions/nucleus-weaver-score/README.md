@@ -9,15 +9,19 @@ pattern as `nucleus-adjudicate`.
 This function returns HTTP 501 until both secrets are set:
 
 ```
-supabase secrets set NUCLEUS_API_URL=https://bpqukcsaoporhvdtfyza.supabase.co/functions/v1/weaver-score
+supabase secrets set NUCLEUS_WEAVER_SCORE_URL=https://bpqukcsaoporhvdtfyza.supabase.co/functions/v1/weaver-score
 supabase secrets set NUCLEUS_API_KEY=<the key nucleus issued for client_id "dualpay">
 ```
 
-This is the **same** `NUCLEUS_API_KEY` value `nucleus-adjudicate` uses
-— one credential authorizes both nucleus endpoints. If
-`nucleus-adjudicate`'s secrets are already set, this function's
-`NUCLEUS_API_KEY` is already correct; only `NUCLEUS_API_URL` differs
-(points at `weaver-score`, not `adjudicate-claim`).
+`NUCLEUS_WEAVER_SCORE_URL` is named per-function deliberately: Supabase
+Edge Function secrets are project-wide, not scoped to a single
+function, so a plain `NUCLEUS_API_URL` would collide with
+`nucleus-adjudicate`'s own (different) URL secret.
+
+`NUCLEUS_API_KEY` is the **same** value `nucleus-adjudicate` uses — one
+credential authorizes both nucleus endpoints. If `nucleus-adjudicate`'s
+secrets are already set, this function's `NUCLEUS_API_KEY` is already
+correct; you only need to add `NUCLEUS_WEAVER_SCORE_URL`.
 
 ## What this does and doesn't do
 

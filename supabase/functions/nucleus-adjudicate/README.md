@@ -10,9 +10,15 @@ same server-boundary pattern `scheduler-dispatcher` already uses for
 This function returns HTTP 501 until both secrets are set:
 
 ```
-supabase secrets set NUCLEUS_API_URL=https://bpqukcsaoporhvdtfyza.supabase.co/functions/v1/adjudicate-claim
+supabase secrets set NUCLEUS_ADJUDICATE_URL=https://bpqukcsaoporhvdtfyza.supabase.co/functions/v1/adjudicate-claim
 supabase secrets set NUCLEUS_API_KEY=<the key nucleus issued for client_id "dualpay">
 ```
+
+`NUCLEUS_ADJUDICATE_URL` is named per-function deliberately: Supabase
+Edge Function secrets are project-wide, not scoped to a single
+function, so a plain `NUCLEUS_API_URL` would collide with
+`nucleus-weaver-score`'s own (different) URL secret. `NUCLEUS_API_KEY`
+is shared on purpose — it's the same credential for both.
 
 Neither belongs in `.env` / `.env.example` (those are documented as
 `VITE_`-prefixed only, since anything there ships to the browser).
