@@ -92,8 +92,12 @@ Deno.serve(async (req) => {
   }
 
   if (nucleusError) {
+    // Propagate nucleus's actual status (401/429/etc.) when we got a
+    // real response from it, instead of collapsing every non-2xx reply
+    // into a generic 502 -- see nucleus-adjudicate/index.ts's copy of
+    // this comment for why.
     return new Response(JSON.stringify({ error: nucleusError }), {
-      status: 502,
+      status: nucleusStatus ?? 502,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

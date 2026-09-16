@@ -113,8 +113,14 @@ Deno.serve(async (req) => {
   }] as never);
 
   if (nucleusError) {
+    // Propagate nucleus's actual status (400/401/429/etc.) when we got
+    // a real response from it, instead of collapsing every non-2xx
+    // reply into a generic 502 -- a caller needs to tell "bad request,
+    // fix your data" and "rate limited, back off" apart from "nucleus
+    // is unreachable." 502 stays the fallback for a genuine network
+    // failure, where nucleusStatus was never set.
     return new Response(JSON.stringify({ error: nucleusError }), {
-      status: 502,
+      status: nucleusStatus ?? 502,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
