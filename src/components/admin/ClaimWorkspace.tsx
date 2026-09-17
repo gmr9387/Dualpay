@@ -9,6 +9,7 @@ import { CasePanel } from './CasePanel';
 import { StateDiagram } from './StateDiagram';
 import { RunSummaryPanel } from './RunSummaryPanel';
 import { AuditReadinessPanel } from './AuditReadinessPanel';
+import { NucleusVerificationPanel } from './NucleusVerificationPanel';
 import { CaseLinkingPanel } from './CaseLinkingPanel';
 import { FileText, Layers, Network, Cpu, GitBranch, Briefcase, Printer, Download, MoreHorizontal, ArrowRight } from 'lucide-react';
 
@@ -129,6 +130,7 @@ export function ClaimWorkspace(props: ClaimWorkspaceProps) {
           <div className="space-y-4">
             <RunSummaryPanel claim={claim} run={result.run} trace={result.trace} />
             <AuditReadinessPanel claim={claim} run={result.run} trace={result.trace} />
+            <NucleusVerificationPanel claim={claim} />
             <SummaryTab claim={claim} result={result} />
           </div>
         )}
