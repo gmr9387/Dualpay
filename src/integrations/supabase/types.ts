@@ -62,6 +62,65 @@ export type Database = {
           },
         ]
       }
+      appeal_recovery_cases: {
+        Row: {
+          assigned_to_user_id: string | null
+          claim_id: string
+          core_decision_outcome: string | null
+          core_dispatch_status: string | null
+          core_trace_id: string | null
+          created_at: string
+          current_state: string
+          glue_run_id: string | null
+          id: string
+          organization_id: string
+          packet_id: string | null
+          payer_response_status: string | null
+          recovered_amount_cents: number
+          updated_at: string
+        }
+        Insert: {
+          assigned_to_user_id?: string | null
+          claim_id: string
+          core_decision_outcome?: string | null
+          core_dispatch_status?: string | null
+          core_trace_id?: string | null
+          created_at?: string
+          current_state?: string
+          glue_run_id?: string | null
+          id?: string
+          organization_id: string
+          packet_id?: string | null
+          payer_response_status?: string | null
+          recovered_amount_cents?: number
+          updated_at?: string
+        }
+        Update: {
+          assigned_to_user_id?: string | null
+          claim_id?: string
+          core_decision_outcome?: string | null
+          core_dispatch_status?: string | null
+          core_trace_id?: string | null
+          created_at?: string
+          current_state?: string
+          glue_run_id?: string | null
+          id?: string
+          organization_id?: string
+          packet_id?: string | null
+          payer_response_status?: string | null
+          recovered_amount_cents?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appeal_recovery_cases_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["org_id"]
+          },
+        ]
+      }
       automation_jobs: {
         Row: {
           completed_at: string | null
@@ -1188,13 +1247,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "ops_events_claim_id_fkey"
-            columns: ["claim_id"]
-            isOneToOne: false
-            referencedRelation: "claims"
-            referencedColumns: ["claim_id"]
-          },
-          {
             foreignKeyName: "ops_events_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
@@ -1664,6 +1716,27 @@ export type Database = {
         }
         Relationships: []
       }
+      system_config: {
+        Row: {
+          description: string | null
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          description?: string | null
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          description?: string | null
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       traces: {
         Row: {
           claim_id: string
@@ -1790,6 +1863,30 @@ export type Database = {
           },
         ]
       }
+      user_security_settings: {
+        Row: {
+          created_at: string
+          mfa_enabled: boolean
+          mfa_enabled_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          mfa_enabled?: boolean
+          mfa_enabled_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          mfa_enabled?: boolean
+          mfa_enabled_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       worker_registry: {
         Row: {
           jobs_failed: number
@@ -1870,6 +1967,60 @@ export type Database = {
         Args: { _stale_minutes?: number }
         Returns: number
       }
+      rpc_advance_appeal_case: {
+        Args: {
+          p_actor?: string
+          p_case_id?: string
+          p_claim_id?: string
+          p_event_kind?: string
+          p_event_payload?: Json
+          p_event_summary?: string
+          p_expected_state?: string
+          p_extra_patch?: Json
+          p_idempotency_key: string
+          p_next_state?: string
+          p_org_id?: string
+          p_payload_hash?: string
+        }
+        Returns: Json
+      }
+      rpc_advance_payment_state: {
+        Args: {
+          p_actor: string
+          p_claim_id: string
+          p_from_status: string
+          p_idempotency_key: string
+          p_org_id: string
+          p_payload_hash?: string
+          p_to_status: string
+        }
+        Returns: Json
+      }
+      rpc_log_recovery_event: {
+        Args: {
+          p_actor: string
+          p_amount_cents: number
+          p_claim_id: string
+          p_idempotency_key: string
+          p_notes?: string
+          p_org_id: string
+          p_payload_hash?: string
+          p_recovered_from: string
+          p_recovery_type: string
+        }
+        Returns: Json
+      }
+      rpc_log_write_off: {
+        Args: {
+          p_actor: string
+          p_claim_id: string
+          p_idempotency_key: string
+          p_org_id: string
+          p_payload_hash?: string
+          p_reason: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
@@ -1888,12 +2039,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1917,11 +2068,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1942,11 +2093,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1967,11 +2118,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1984,11 +2135,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
