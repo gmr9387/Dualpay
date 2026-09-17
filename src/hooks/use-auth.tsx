@@ -13,6 +13,20 @@ const Ctx = createContext<AuthCtx>({ user: null, session: null, loading: true, s
 
 const IDLE_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes — pilot hardening
 
+/**
+ * Dev-only auto-login: signs in with a local dev account so RequireAuth
+ * doesn't block iteration behind /login on every dev-server restart.
+ * Gated on Vite's import.meta.env.DEV, which is always false in a
+ * production build — this code path cannot run for real users.
+ */
+async function tryDevAutoLogin(): Promise<void> {
+  const email = import.meta.env.VITE_DEV_AUTO_LOGIN_EMAIL;
+  const password = import.meta.env.VITE_DEV_AUTO_LOGIN_PASSWORD;
+  if (!email || !password) return;
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) console.warn('[dev-auto-login] sign-in failed:', error.message);
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -24,7 +38,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(s);
       setUser(s?.user ?? null);
     });
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!data.session && import.meta.env.DEV) {
+        await tryDevAutoLogin();
+        setLoading(false);
+        return;
+      }
       setSession(data.session);
       setUser(data.session?.user ?? null);
       setLoading(false);
