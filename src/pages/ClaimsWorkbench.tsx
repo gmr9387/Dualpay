@@ -6,12 +6,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { resetIdCounter } from '@/engine/calculation-engine';
 import { executeAdjudicationWithReplay } from '@/engine/adjudication-orchestrator';
+import { adjudicateViaNucleus } from '@/engine/nucleus-adjudication-client';
 import { demoContract, demoPlan, demoPriorOutcomes } from '@/data/demo-scenarios';
 import { isDemoModeEnabled } from '@/lib/demo-flag';
 import { LIVE_CONTRACT, LIVE_PLAN } from '@/lib/live-stubs';
 import {
   loadClaims, loadCases, loadCaseEvents, loadAccumulators, loadLatestRuns,
-  saveAdjudication, seedIfEmpty,
+  saveAdjudication, saveClaim, seedIfEmpty,
 } from '@/data/repository';
 import type { Claim, AdjudicationRun, MemberAccumulators } from '@/types/claim';
 import type { TraceObject } from '@/types/trace';
@@ -23,6 +24,58 @@ import { PageHeader, EmptyState } from '@/components/clarity/primitives';
 import { Inbox, Loader2 } from 'lucide-react';
 
 interface AdjResult { claimId: string; run: AdjudicationRun; trace: TraceObject; }
+
+interface NucleusGateResult { blocked: boolean; reason?: string; }
+
+/**
+ * Real, blocking nucleus check: a deny or critical-risk line stops the
+ * claim before the deterministic kernel runs. Nucleus never overrides
+ * the kernel's payment math -- it only gates whether that math runs at
+ * all, so executeAdjudicationWithReplay's replay/fingerprint guarantee
+ * stays intact for every claim that does reach it.
+ *
+ * Fails open (never blocks) when nucleus isn't configured yet, the
+ * claim has no payer_name to check against (claim.intel is populated
+ * by Claim Clarity, not always present), or the call itself throws --
+ * an infrastructure problem reaching a separate system must not
+ * silently halt claims processing.
+ */
+async function checkNucleusGate(claim: Claim): Promise<NucleusGateResult> {
+  const payerName = claim.intel?.payer_name;
+  if (!payerName) return { blocked: false };
+
+  try {
+    for (const line of claim.lines) {
+      const result = await adjudicateViaNucleus({
+        claim_id: claim.claim_id,
+        member_id: claim.member_id,
+        payer_name: payerName,
+        procedure_code: line.procedure_code,
+        provider_npi: line.rendering_provider_npi ?? claim.provider_npi,
+        diagnosis_codes: line.diagnosis_codes,
+        billed_amount_cents: line.billed_amount,
+        units: line.units,
+        place_of_service: line.place_of_service,
+        service_date: line.service_date,
+      });
+
+      if (!result.configured) continue;
+      if (result.decision === 'deny') {
+        return { blocked: true, reason: `nucleus denied line ${line.line_id}: ${result.reason}` };
+      }
+      if (result.risk_tier === 'critical') {
+        return {
+          blocked: true,
+          reason: `nucleus flagged line ${line.line_id} as critical risk: ${result.reason}`,
+        };
+      }
+    }
+  } catch (err) {
+    console.error('Nucleus gate check failed, proceeding without it:', err);
+  }
+
+  return { blocked: false };
+}
 
 export default function ClaimsWorkbench() {
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
@@ -52,6 +105,16 @@ export default function ClaimsWorkbench() {
           const acc = a[claim.member_id] ?? Object.values(a)[0];
           if (!acc) continue;
           if (!isDemoModeEnabled()) continue;
+
+          const gate = await checkNucleusGate(claim);
+          if (gate.blocked) {
+            console.warn(`Claim ${claim.claim_id} blocked by nucleus: ${gate.reason}`);
+            const denied: Claim = { ...claim, status: 'DENIED' };
+            await saveClaim(denied);
+            setClaims(prev => prev.map(cl => (cl.claim_id === claim.claim_id ? denied : cl)));
+            continue;
+          }
+
           const { run, trace } = await executeAdjudicationWithReplay({
             claim,
             accumulators: acc,
