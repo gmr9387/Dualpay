@@ -54,6 +54,7 @@ export type OpsEventKind =
   | 'edi_rejected'
   | 'edi_normalized'
   | 'edi_imported'
+  | 'edi_error_resolved'
   | 'fee_assessed'
   | 'plan_benefits_updated'
   | 'case_status_changed'

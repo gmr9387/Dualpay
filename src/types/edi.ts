@@ -6,6 +6,7 @@ export type EdiTransactionType = '835' | '837P' | '837I' | 'unknown';
 export type EdiStatus = 'received' | 'parsed' | 'validated' | 'normalized' | 'imported' | 'rejected';
 export type EdiValidationStatus = 'pending' | 'valid' | 'invalid';
 export type EdiErrorSeverity = 'error' | 'warning' | 'info';
+export type EdiErrorStatus = 'open' | 'resolved' | 'ignored';
 
 export interface EdiSegment {
   segment_id?: string;
@@ -70,4 +71,8 @@ export interface EdiErrorRow {
   error_code: string | null;
   message: string;
   created_at: string;
+  status: EdiErrorStatus;
+  resolution_note: string | null;
+  resolved_at: string | null;
+  resolved_by: string | null;
 }

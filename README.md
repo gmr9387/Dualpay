@@ -200,6 +200,8 @@ Denial → Appeal → Outcome is a single closed loop: a denial is detected on i
 
 Case Management is a closed loop: `autoCreateCase` opens a real `cases` row (with an initial `CASE_CREATED` event) when automation detects a high-severity denial, a major underpayment, or a repeat payer issue. From the Claims Workbench case tab, staff can now move a case through its real lifecycle (`OPEN → IN_REVIEW → PENDING_RETRO/RESOLVED → CLOSED`, with reopen) and add timestamped notes — both write real `case_events` rows (`STATUS_CHANGED`, `NOTE_ADDED`) alongside the retro-recalculation and accumulator-impact views that already existed, so a case that gets auto-created has a real path to resolution instead of sitting untouched.
 
+EDI Errors is a closed loop: every X12 validation issue the gateway persists on ingest (`ingestEdiFile` → `edi_errors`) can be marked resolved or ignored with a note from the EDI Errors page, instead of accumulating in a read-only list with no way to signal it was reviewed. Resolution is attributed to the real signed-in user and timestamped, and the default view hides resolved/ignored issues so the open queue reflects real outstanding work.
+
 Automation
 DualPay includes:
 
@@ -416,6 +418,7 @@ COB	Implemented
 Denial detection	Implemented
 Denial → Appeal → Outcome loop	Implemented (real appeal_recovery_cases state machine, linked from denial/packet, outcomes written atomically)
 Case management loop	Implemented (auto-created on trigger, real status transitions + notes from Claims Workbench)
+EDI error resolution loop	Implemented (resolve/ignore with note, attributed + timestamped)
 Contract recovery	Implemented (automatic sweep on import, fee assessment, client report + response)
 Plan benefits	Implemented
 Durable jobs	Implemented

@@ -515,8 +515,12 @@ export type Database = {
           error_id: string
           message: string
           org_id: string
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
           segment_id: string | null
           severity: string
+          status: string
           transaction_id: string
         }
         Insert: {
@@ -525,8 +529,12 @@ export type Database = {
           error_id?: string
           message: string
           org_id: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
           segment_id?: string | null
           severity?: string
+          status?: string
           transaction_id: string
         }
         Update: {
@@ -535,8 +543,12 @@ export type Database = {
           error_id?: string
           message?: string
           org_id?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
           segment_id?: string | null
           severity?: string
+          status?: string
           transaction_id?: string
         }
         Relationships: [
