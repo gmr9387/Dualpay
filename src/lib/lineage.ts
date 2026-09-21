@@ -3,11 +3,10 @@
  * Persist remittance lines, claim-source links, and append-only lineage events,
  * and provide a single read API used by the lineage viewer.
  */
-import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { appendOpsEvent } from '@/lib/ops-events';
-const sb = supabase as ReturnType<typeof createClient>;
-
+import { withTriggerOrgId } from '@/lib/supabase-helpers';
+const sb = supabase;
 
 type Json = string | number | boolean | null | { [k: string]: Json } | Json[];
 
@@ -101,7 +100,7 @@ export async function insertRemittanceLines(
   if (!rows.length) return [];
   const { data, error } = await sb
     .from('remittance_lines')
-    .insert(rows)
+    .insert(withTriggerOrgId(rows))
     .select('*');
   if (error) { console.error('[lineage] insertRemittanceLines', error); return []; }
   return (data ?? []) as RemittanceLineRow[];
@@ -117,7 +116,7 @@ export async function insertClaimSourceLinks(
   }>,
 ): Promise<void> {
   if (!links.length) return;
-  const { error } = await sb.from('claim_source_links').insert(links);
+  const { error } = await sb.from('claim_source_links').insert(withTriggerOrgId(links));
   if (error) console.error('[lineage] insertClaimSourceLinks', error);
 }
 
@@ -133,7 +132,7 @@ export async function appendLineageEvents(
   }>,
 ): Promise<void> {
   if (!events.length) return;
-  const { error } = await sb.from('recovery_lineage_events').insert(events);
+  const { error } = await sb.from('recovery_lineage_events').insert(withTriggerOrgId(events));
   if (error) { console.error('[lineage] appendLineageEvents', error); return; }
   // Audit summary event (single roll-up — avoid spamming ops_events).
   await appendOpsEvent({

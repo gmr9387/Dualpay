@@ -24,12 +24,13 @@ function makePrior(payerId: string, paid: number, allowed: number): PriorPayerOu
     payer_id: payerId,
     payer_name: `Payer ${payerId}`,
     claim_line_id: 'line_1',
+    billed: allowed,
     paid,
     allowed,
-    adjustment: 0,
-    copay: 0,
-    coinsurance: 0,
-    deductible: 0,
+    patient_responsibility: 0,
+    adjustments: [],
+    source: 'manual_entry',
+    confidence: 1,
   };
 }
 

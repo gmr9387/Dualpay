@@ -43,7 +43,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       .select('role, org_id, organizations(name, org_id, recovery_fee_percent_bps)')
       .eq('user_id', user.id);
     if (error) { console.error('[org] load failed', error.message); setLoading(false); return; }
-    const list: Org[] = (data ?? []).map((r: Record<string, unknown>) => ({
+    const list: Org[] = (data ?? []).map((r) => ({
       org_id: r.org_id,
       name: r.organizations?.name ?? 'Untitled Org',
       role: r.role as OrgRole,

@@ -95,9 +95,10 @@ describe('GuidedRecovery — appeal transition (UNIT)', () => {
 
     const React = await import('react');
     const { render, screen, fireEvent, waitFor } = await import('@testing-library/react');
+    const { MemoryRouter } = await import('react-router-dom');
     const { default: GuidedRecovery } = await import('@/pages/GuidedRecovery');
 
-    render(React.createElement(GuidedRecovery));
+    render(React.createElement(MemoryRouter, null, React.createElement(GuidedRecovery)));
     fireEvent.click(screen.getByTitle('Advance to Appeal Filed'));
 
     await waitFor(() => {

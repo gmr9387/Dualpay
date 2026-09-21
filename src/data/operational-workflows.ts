@@ -537,17 +537,17 @@ export async function getMyWorklist(
   if (error) throw error;
 
   const now = new Date();
-  return (data ?? []).map((row: Record<string, unknown>) => {
+  return (data ?? []).map((row) => {
     const dueDate = row.due_date ? new Date(row.due_date) : null;
     const daysUntilDue = dueDate ? Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : undefined;
 
     return {
       claim_id: row.claim_id,
       total_billed_cents: row.claims?.total_billed_cents ?? 0,
-      assigned_to_user_id: row.assigned_to_user_id,
-      priority: row.priority,
-      due_date: row.due_date,
-      status: row.status,
+      assigned_to_user_id: row.assigned_to_user_id ?? undefined,
+      priority: row.priority as WorklistItem['priority'],
+      due_date: row.due_date ?? undefined,
+      status: row.status as WorklistItem['status'],
       assigned_at: row.assigned_at,
       days_until_due: daysUntilDue,
       is_overdue: dueDate ? dueDate < now : false,
@@ -582,13 +582,13 @@ export async function getOverdueClaims(
   if (error) throw error;
 
   const now = new Date();
-  return (data ?? []).map((row: Record<string, unknown>) => ({
+  return (data ?? []).map((row) => ({
     claim_id: row.claim_id,
     total_billed_cents: row.claims?.total_billed_cents ?? 0,
-    assigned_to_user_id: row.assigned_to_user_id,
-    priority: row.priority,
-    due_date: row.due_date,
-    status: row.status,
+    assigned_to_user_id: row.assigned_to_user_id ?? undefined,
+    priority: row.priority as WorklistItem['priority'],
+    due_date: row.due_date ?? undefined,
+    status: row.status as WorklistItem['status'],
     assigned_at: row.assigned_at,
     days_until_due: row.due_date ? Math.ceil((new Date(row.due_date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : undefined,
     is_overdue: true,
@@ -627,13 +627,13 @@ export async function getDueTodayClaims(
 
   if (error) throw error;
 
-  return (data ?? []).map((row: Record<string, unknown>) => ({
+  return (data ?? []).map((row) => ({
     claim_id: row.claim_id,
     total_billed_cents: row.claims?.total_billed_cents ?? 0,
-    assigned_to_user_id: row.assigned_to_user_id,
-    priority: row.priority,
-    due_date: row.due_date,
-    status: row.status,
+    assigned_to_user_id: row.assigned_to_user_id ?? undefined,
+    priority: row.priority as WorklistItem['priority'],
+    due_date: row.due_date ?? undefined,
+    status: row.status as WorklistItem['status'],
     assigned_at: row.assigned_at,
     days_until_due: 0,
     is_overdue: false,
@@ -668,15 +668,15 @@ export async function getHighDollarClaims(
   if (error) throw error;
 
   const now = new Date();
-  return (data ?? []).map((row: Record<string, unknown>) => {
+  return (data ?? []).map((row) => {
     const dueDate = row.due_date ? new Date(row.due_date) : null;
     return {
       claim_id: row.claim_id,
       total_billed_cents: row.claims?.total_billed_cents ?? 0,
-      assigned_to_user_id: row.assigned_to_user_id,
-      priority: row.priority,
-      due_date: row.due_date,
-      status: row.status,
+      assigned_to_user_id: row.assigned_to_user_id ?? undefined,
+      priority: row.priority as WorklistItem['priority'],
+      due_date: row.due_date ?? undefined,
+      status: row.status as WorklistItem['status'],
       assigned_at: row.assigned_at,
       days_until_due: dueDate ? Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : undefined,
       is_overdue: dueDate ? dueDate < now : false,
@@ -706,14 +706,14 @@ export async function getClaimTimeline(
 
   if (error) throw error;
 
-  return (data ?? []).map((row: Record<string, unknown>) => ({
+  return (data ?? []).map((row) => ({
     event_id: row.event_id,
     occurred_at: row.occurred_at,
     kind: row.kind,
-    claim_id: row.claim_id,
+    claim_id: row.claim_id ?? '',
     actor: row.actor,
     summary: row.summary,
-    payload: row.payload ?? null,
+    payload: (row.payload as Record<string, unknown> | null) ?? null,
   }));
 }
 
@@ -736,14 +736,14 @@ export async function getClaimTimelineByKind(
 
   if (error) throw error;
 
-  return (data ?? []).map((row: Record<string, unknown>) => ({
+  return (data ?? []).map((row) => ({
     event_id: row.event_id,
     occurred_at: row.occurred_at,
     kind: row.kind,
-    claim_id: row.claim_id,
+    claim_id: row.claim_id ?? '',
     actor: row.actor,
     summary: row.summary,
-    payload: row.payload ?? null,
+    payload: (row.payload as Record<string, unknown> | null) ?? null,
   }));
 }
 

@@ -14,6 +14,8 @@ import type { RecoveryOutcome, ResolutionType } from '@/types/outcomes';
 import { explainRecoverability } from '@/engine/recoverability';
 import { supabase } from '@/integrations/supabase/client';
 import { appendLineageEvent } from '@/lib/lineage';
+import { withTriggerOrgId } from '@/lib/supabase-helpers';
+import type { Json } from '@/integrations/supabase/types';
 
 type Row = {
   outcome_id: string;
@@ -26,13 +28,13 @@ type Row = {
   recovered_amount_cents: number;
   unrecovered_amount_cents: number;
   notes: string | null;
-  payload: Record<string, unknown> | null;
+  payload: Json | null;
   created_at: string;
   updated_at: string;
 };
 
 function rowToOutcome(r: Row): RecoveryOutcome {
-  const p = (r.payload ?? {}) as Partial<RecoveryOutcome> & Record<string, unknown>;
+  const p = (r.payload ?? {}) as unknown as Partial<RecoveryOutcome> & Record<string, unknown>;
   return {
     outcome_id: r.outcome_id,
     claim_id: r.claim_id,
@@ -110,13 +112,11 @@ export async function upsertOutcome(o: RecoveryOutcome): Promise<void> {
   const row = outcomeToRow({ ...o, updated_at: new Date().toISOString() });
   const { error } = await supabase
     .from('recovery_outcomes')
-    .upsert(row as never, { onConflict: 'outcome_id' });
+    .upsert(withTriggerOrgId([row]), { onConflict: 'outcome_id' });
   if (error) { console.error('[outcomes] upsert failed', error.message); return; }
-  // Lineage event — outcome_recorded step in recovery chain.
-  // org_id is null here; the trg_lineage_events_org trigger fills it from
-  // set_default_org_id() on the server side (RecoveryOutcome has no org_id field).
+  // Lineage event — outcome_recorded step in recovery chain. org_id is not
+  // a param here: recovery_lineage_events also populates it via trigger.
   await appendLineageEvent({
-    org_id: null,
     claim_id: o.claim_id ?? null,
     outcome_id: o.outcome_id ?? null,
     event_type: 'outcome_recorded',

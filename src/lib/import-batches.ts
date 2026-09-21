@@ -1,9 +1,10 @@
 /**
  * Recovery Factory — Import batch persistence (Lovable Cloud).
  */
-import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import type { ImportBatch, ImportSourceType, FieldMapping, ValidationSummary, ParsedRow } from '@/types/import';
+import { withTriggerOrgId } from '@/lib/supabase-helpers';
+import type { Database } from '@/integrations/supabase/types';
+import type { ImportBatch, ImportSourceType, FieldMapping, ValidationSummary, ParsedRow, CanonicalField } from '@/types/import';
 import { rowToClaim } from '@/engine/import-to-claim';
 import { saveClaim } from '@/data/repository';
 import { persistExceptions } from '@/lib/import-exceptions';
@@ -20,27 +21,27 @@ import {
   appendLineageEvents,
   type InsertRemittanceLine,
 } from '@/lib/lineage';
-const sb = supabase as ReturnType<typeof createClient>;
+const sb = supabase;
 
 type Json = string | number | boolean | null | { [k: string]: Json } | Json[];
 const J = <T>(v: T) => v as unknown as Json;
 
 const EVENT = 'clarity-import-batches';
 
-function fromRow(r: Record<string, unknown>): ImportBatch {
+function fromRow(r: Database['public']['Tables']['import_batches']['Row']): ImportBatch {
   return {
     batch_id: r.batch_id,
     file_name: r.file_name,
-    source_type: r.source_type,
+    source_type: r.source_type as ImportSourceType,
     uploaded_by: r.uploaded_by,
-    status: r.status,
+    status: r.status as ImportBatch['status'],
     record_count: r.record_count,
     success_count: r.success_count,
     error_count: r.error_count,
     warning_count: r.warning_count,
     import_score: r.import_score,
     mapping: (r.mapping ?? {}) as FieldMapping,
-    validation: (r.validation ?? {}) as ValidationSummary,
+    validation: (r.validation ?? {}) as unknown as ValidationSummary,
     generated_claim_ids: (r.generated_claim_ids ?? []) as string[],
     expected_recovery_cents: Number(r.expected_recovery_cents ?? 0),
     uploaded_at: r.uploaded_at,
@@ -77,7 +78,7 @@ export async function createBatch(args: {
   };
   const { data, error } = await sb
     .from('import_batches')
-    .insert([payload])
+    .insert(withTriggerOrgId([payload]))
     .select('*')
     .single();
   if (error) throw error;
@@ -142,8 +143,8 @@ export async function commitBatch(
       }
       // Non-remittance imports still get a lineage row so disputes can trace back.
       const n = row.normalized;
-      const num = (k: string) => (typeof n[k] === 'number' ? (n[k] as number) : 0);
-      const str = (k: string) => (n[k] == null || n[k] === '' ? null : String(n[k]));
+      const num = (k: CanonicalField) => (typeof n[k] === 'number' ? (n[k] as number) : 0);
+      const str = (k: CanonicalField) => (n[k] == null || n[k] === '' ? null : String(n[k]));
       return {
         import_batch_id: batch.batch_id,
         source_row_number: row.index + 1,

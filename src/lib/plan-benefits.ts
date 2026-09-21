@@ -4,13 +4,14 @@
  * uploaded by staff (no external eligibility/834 feed exists) — the same
  * real-data-source model already used for payer_contracts.
  */
-import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { appendOpsEvent } from '@/lib/ops-events';
+import { withTriggerOrgId } from '@/lib/supabase-helpers';
+import type { Json } from '@/integrations/supabase/types';
 import type { PlanBenefitRecord } from '@/types/plan-benefits';
 import type { PlanBenefits } from '@/types/claim';
 
-const sb = supabase as ReturnType<typeof createClient>;
+const sb = supabase;
 
 export const PLAN_BENEFITS_EVENT = 'clarity-plan-benefits';
 
@@ -18,13 +19,13 @@ export async function listPlanBenefits(): Promise<PlanBenefitRecord[]> {
   const { data, error } = await sb.from('plan_benefits').select('*')
     .order('payer_name', { ascending: true }).order('effective_date', { ascending: false });
   if (error) { console.error('[plan-benefits] list failed', error.message); return []; }
-  return (data ?? []) as PlanBenefitRecord[];
+  return (data ?? []) as unknown as PlanBenefitRecord[];
 }
 
 export async function getPlanBenefit(plan_id: string): Promise<PlanBenefitRecord | null> {
   const { data, error } = await sb.from('plan_benefits').select('*').eq('plan_id', plan_id).maybeSingle();
   if (error) { console.error('[plan-benefits] get failed', error.message); return null; }
-  return data as PlanBenefitRecord | null;
+  return data as unknown as PlanBenefitRecord | null;
 }
 
 export async function createPlanBenefit(input: {
@@ -52,12 +53,12 @@ export async function createPlanBenefit(input: {
     coinsurance_rate: input.coinsurance_rate,
     copay_amount: input.copay_amount ?? null,
     cob_policy: input.cob_policy ?? 'standard',
-    covered_services: input.covered_services ?? [],
+    covered_services: (input.covered_services ?? []) as unknown as Json,
     effective_date: input.effective_date,
     termination_date: input.termination_date ?? null,
     uploaded_by: input.uploaded_by ?? null,
   };
-  const { data, error } = await sb.from('plan_benefits').insert([row]).select('*').single();
+  const { data, error } = await sb.from('plan_benefits').insert(withTriggerOrgId([row])).select('*').single();
   if (error || !data) { console.error('[plan-benefits] create failed', error?.message); return null; }
   await appendOpsEvent({
     kind: 'contract_uploaded', // reuse — same "on-file benefit data uploaded" event family
@@ -65,7 +66,7 @@ export async function createPlanBenefit(input: {
     payload: { plan_id: data.plan_id, version: nextVersion },
   });
   window.dispatchEvent(new Event(PLAN_BENEFITS_EVENT));
-  return data as PlanBenefitRecord;
+  return data as unknown as PlanBenefitRecord;
 }
 
 function toKernelPlan(r: PlanBenefitRecord): PlanBenefits {

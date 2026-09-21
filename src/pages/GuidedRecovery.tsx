@@ -146,7 +146,8 @@ export default function GuidedRecovery() {
     setAdvancing(arc.id);
     try {
       const idempotencyKey = makeIdempotencyKey('appeal');
-      await advance(arc, next, idempotencyKey, extra);
+      if (extra) await advance(arc, next, idempotencyKey, extra);
+      else await advance(arc, next, idempotencyKey);
 
       // Close the loop into real financial records: a recovered case writes
       // a recovery_outcomes row (so Outcome Log / executive dashboards see

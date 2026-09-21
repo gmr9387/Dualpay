@@ -4,12 +4,13 @@
  * Durable persistence layer for the background job queue.
  * All execution lives in worker-executor.ts; this file only mutates queue rows.
  */
-import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { appendOpsEvent } from '@/lib/ops-events';
+import { withTriggerOrgId } from '@/lib/supabase-helpers';
+import type { Json } from '@/integrations/supabase/types';
 import type { QueueJob, QueueJobStatus, QueueJobType, JobRun, JobFailure } from '@/types/platform';
 
-const sb = supabase as ReturnType<typeof createClient>;
+const sb = supabase;
 
 export const QUEUE_EVENT = 'clarity-queue';
 const notify = () => window.dispatchEvent(new Event(QUEUE_EVENT));
@@ -30,11 +31,11 @@ export async function enqueueJob(input: EnqueueInput): Promise<QueueJob | null> 
     pipeline_id: input.pipeline_id ?? null,
     status: 'queued' as QueueJobStatus,
     priority: input.priority ?? 100,
-    payload: (input.payload ?? null) as never,
+    payload: (input.payload ?? null) as Json,
     max_attempts: input.max_attempts ?? 3,
     next_attempt_at: new Date().toISOString(),
   };
-  const { data, error } = await sb.from('job_queue').insert([row]).select('*').single();
+  const { data, error } = await sb.from('job_queue').insert(withTriggerOrgId([row])).select('*').single();
   if (error || !data) { console.error('[queue] enqueue failed', error?.message); return null; }
   await appendOpsEvent({
     kind: 'job_queued',
@@ -95,7 +96,7 @@ export async function completeQueueJob(
     status: 'completed', completed_at: new Date().toISOString(), last_error: null,
   }).eq('queue_job_id', job.queue_job_id);
 
-  await sb.from('job_runs').insert([{
+  await sb.from('job_runs').insert(withTriggerOrgId([{
     queue_job_id: job.queue_job_id,
     worker_id,
     duration_ms,
@@ -103,8 +104,8 @@ export async function completeQueueJob(
     records_processed: summary.records_processed,
     records_succeeded: summary.records_succeeded,
     records_failed: summary.records_failed,
-    result_summary: (summary.details ?? null) as never,
-  }]);
+    result_summary: (summary.details ?? null) as Json,
+  }]));
 
   await appendOpsEvent({
     kind: 'job_completed',
@@ -120,18 +121,18 @@ export async function failQueueJob(
   job: QueueJob, worker_id: string, duration_ms: number,
   err: { message: string; stack?: string | null },
 ): Promise<{ retried: boolean; dead: boolean }> {
-  await sb.from('job_runs').insert([{
+  await sb.from('job_runs').insert(withTriggerOrgId([{
     queue_job_id: job.queue_job_id, worker_id, duration_ms,
     status: 'failed', records_processed: 0, records_succeeded: 0, records_failed: 0,
-    result_summary: { error: err.message } as never,
-  }]);
+    result_summary: { error: err.message } as Json,
+  }]));
 
-  await sb.from('job_failures').insert([{
+  await sb.from('job_failures').insert(withTriggerOrgId([{
     queue_job_id: job.queue_job_id,
     error_message: err.message,
     stack_trace: err.stack ?? null,
     retry_count: job.attempts,
-  }]);
+  }]));
 
   const exhausted = job.attempts >= job.max_attempts;
   if (exhausted) {

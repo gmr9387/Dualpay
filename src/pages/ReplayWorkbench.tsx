@@ -9,12 +9,18 @@ import {
 
 import {
   replaySnapshot,
+  type ReplayResult,
 } from '@/engine/replay-engine';
 
 import {
   verifyReplay,
   type VerificationResult,
 } from '@/engine/trace-verifier';
+
+interface RunVerification {
+  replay: ReplayResult;
+  verify: VerificationResult;
+}
 
 import {
   Play,
@@ -31,7 +37,7 @@ export default function ReplayWorkbench() {
   );
 
   const [selectedId, setSelectedId] = useState<string>();
-  const [verification, setVerification] = useState<VerificationResult | null>(null);
+  const [verification, setVerification] = useState<RunVerification | null>(null);
   const [running, setRunning] = useState(false);
 
   const selected: ReplayRecord | undefined =

@@ -3,15 +3,18 @@
  * Versioned CRUD for payer_contracts + fee_schedules + underpayment_disputes.
  * Never overwrites: new version creates a new contract row.
  */
-import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { appendOpsEvent } from '@/lib/ops-events';
 import { appendLineageEvent } from '@/lib/lineage';
+import { withTriggerOrgId } from '@/lib/supabase-helpers';
+import type { Database } from '@/integrations/supabase/types';
 import type {
   PayerContract, FeeScheduleRow, UnderpaymentDispute,
 } from '@/types/contracts';
 
-const sb = supabase as ReturnType<typeof createClient>;
+type DisputeUpdate = Database['public']['Tables']['underpayment_disputes']['Update'];
+
+const sb = supabase;
 
 export const CONTRACT_EVENT = 'clarity-contracts';
 
@@ -98,7 +101,7 @@ export async function createContract(input: {
     contract_type: input.contract_type ?? 'commercial',
     uploaded_by: input.uploaded_by ?? null,
   };
-  const { data, error } = await sb.from('payer_contracts').insert([row]).select('*').single();
+  const { data, error } = await sb.from('payer_contracts').insert(withTriggerOrgId([row])).select('*').single();
   if (error || !data) { console.error('[contracts] create failed', error?.message); return null; }
   await appendOpsEvent({
     kind: 'contract_uploaded',
@@ -115,7 +118,7 @@ export async function addFeeScheduleRows(
 ): Promise<number> {
   if (!rows.length) return 0;
   const payload = rows.map(r => ({ ...r, contract_id }));
-  const { error, data } = await sb.from('fee_schedules').insert(payload).select('fee_schedule_id');
+  const { error, data } = await sb.from('fee_schedules').insert(withTriggerOrgId(payload)).select('fee_schedule_id');
   if (error) { console.error('[contracts] fees insert failed', error.message); return 0; }
   await appendOpsEvent({
     kind: 'contract_version_created',
@@ -164,7 +167,7 @@ export async function createDispute(
   }
 
   const row = { ...input, client_response: 'pending', dedupe_key };
-  const { data, error } = await sb.from('underpayment_disputes').insert([row]).select('*').single();
+  const { data, error } = await sb.from('underpayment_disputes').insert(withTriggerOrgId([row])).select('*').single();
   if (error || !data) { console.error('[disputes] create failed', error?.message); return null; }
   await appendOpsEvent({
     kind: opts?.auto ? 'dispute_auto_created' : 'dispute_created',
@@ -176,9 +179,9 @@ export async function createDispute(
       severity: input.severity,
     },
   });
-  // Lineage event — dispute_created step in recovery chain.
+  // Lineage event — dispute_created step in recovery chain. org_id is not
+  // a param here: recovery_lineage_events also populates it via trigger.
   await appendLineageEvent({
-    org_id: (data as UnderpaymentDispute).org_id ?? null,
     claim_id: input.claim_id ?? null,
     dispute_id: data.dispute_id,
     event_type: 'dispute_created',
@@ -225,7 +228,7 @@ export async function updateDisputeStatus(
   status: string,
   opts?: { feePercentBps?: number },
 ): Promise<void> {
-  const patch: Record<string, unknown> = { status };
+  const patch: DisputeUpdate = { status };
 
   // Contingency fee: only ever assessed on an actual recovery, computed off
   // the real variance this dispute recovered. No fee percent configured (0)
