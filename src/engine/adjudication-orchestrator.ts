@@ -3,6 +3,25 @@
  *
  * Preferred kernel entry point for adjudications that must be
  * replayable, fingerprinted, and ledgered.
+ *
+ * The actual compute step (deriving run+trace from claim/accumulators/
+ * contract/plan/priorOutcomes) now calls valtaris-nucleus's real
+ * adjudicate-claim Edge Function in its "resolved" request mode,
+ * rather than this repo's own local calculation-engine.ts. Nucleus's
+ * kernel is a verified byte-for-byte port of this repo's own
+ * calculation-engine.ts/cob-rules.ts, so the math itself is identical;
+ * what moves is where it runs. Idempotency, persistence, and the
+ * replay ledger below are entirely unchanged -- this orchestrator's
+ * own fingerprint check still runs first and is still the primary
+ * guard against a duplicate adjudication *request* ever being sent;
+ * nucleus's own idempotency cache (keyed by that same fingerprint) is
+ * an additional, defense-in-depth layer against a network-level retry.
+ *
+ * calculation-engine.ts/cob-rules.ts are deliberately left in place,
+ * not deleted -- they remain real, tested, working code; this change
+ * is about which path live claim processing calls, not about deleting
+ * a large, correct kernel that may still be useful (tests reference
+ * it directly, and it documents the exact math nucleus now runs).
  */
 
 import type {
@@ -15,7 +34,7 @@ import type {
 } from '@/types/claim';
 import type { TraceObject } from '@/types/trace';
 
-import { adjudicateClaim } from './calculation-engine';
+import { adjudicateClaimViaNucleus } from './nucleus-adjudication-client';
 import { createReplaySnapshot, type ReplaySnapshot } from './replay-snapshot';
 import { buildTraceFingerprint } from './hash';
 import { saveReplayRecord, getReplayRecordByFingerprint, hasRunId, getReplayRecordByRunId } from './replay-store';
@@ -115,17 +134,21 @@ export async function executeAdjudicationWithReplay(
         fingerprint,
       },
     });
-    // Reconstruct trace deterministically (adjudicateClaim is pure).
-    const replay = adjudicateClaim(
-      args.claim.lines,
+    // Reconstruct trace deterministically. Uses the same fingerprint as
+    // idempotency_key, so this hits nucleus's own replay cache and
+    // returns instantly rather than recomputing -- existing.run (not
+    // this call's run) stays authoritative, matching prior behavior
+    // exactly; only .trace is used from the response.
+    const replay = await adjudicateClaimViaNucleus(
+      args.claim,
       args.accumulators,
       args.contract,
       args.plan,
       priorOutcomes,
       {
+        idempotencyKey: fingerprint,
         runId: existing.run.run_id,
         timestamp: existing.created_at,
-        traceFingerprint: fingerprint,
         snapshotRef: `snapshots/${existing.run.run_id}/${fingerprint}`,
         traceId: `trace_${args.claim.claim_id}_${fingerprint.slice(0, 16)}`,
       },
@@ -150,16 +173,16 @@ export async function executeAdjudicationWithReplay(
   const snapshotRef = `snapshots/${runId}/${fingerprint}`;
   const traceId = `trace_${args.claim.claim_id}_${fingerprint.slice(0, 16)}`;
 
-  const { run, trace } = adjudicateClaim(
-    args.claim.lines,
+  const { run, trace } = await adjudicateClaimViaNucleus(
+    args.claim,
     args.accumulators,
     args.contract,
     args.plan,
     priorOutcomes,
     {
+      idempotencyKey: fingerprint,
       runId,
       timestamp,
-      traceFingerprint: fingerprint,
       snapshotRef,
       traceId,
     },
