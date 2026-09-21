@@ -12,6 +12,7 @@ import { reconcileRemittanceOutcomes } from '@/lib/recovery-reconciliation';
 import { getCurrentOrgId } from '@/lib/current-org';
 import { normalizeRemittance } from '@/engine/remittance-normalizer';
 import { classifyRemittance } from '@/engine/remittance-denial-extractor';
+import { runContractRecoverySweep } from '@/engine/contract-recovery';
 import {
 
   insertRemittanceLines,
@@ -207,6 +208,18 @@ export async function commitBatch(
       return evts;
     });
     await appendLineageEvents(events);
+
+    // Phase 21 — the "review -> readjudication" step: match each remittance
+    // line to its real contract fee schedule and open underpayment_disputes
+    // for real variance. Isolated try/catch so a sweep failure never blocks
+    // the lineage persistence above (already committed by this point).
+    if (isRemittance) {
+      try {
+        await runContractRecoverySweep(insertedLines, batch.batch_id);
+      } catch (e) {
+        console.error('[import-batches] contract recovery sweep failed', e);
+      }
+    }
   } catch (e) {
     console.error('[import-batches] lineage persist failed', e);
   }

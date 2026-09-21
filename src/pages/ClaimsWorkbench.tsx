@@ -10,6 +10,8 @@ import { adjudicateViaNucleus } from '@/engine/nucleus-adjudication-client';
 import { demoContract, demoPlan, demoPriorOutcomes } from '@/data/demo-scenarios';
 import { isDemoModeEnabled } from '@/lib/demo-flag';
 import { LIVE_CONTRACT, LIVE_PLAN } from '@/lib/live-stubs';
+import { loadLiveContract } from '@/lib/contracts';
+import type { ContractTerms } from '@/types/claim';
 import {
   loadClaims, loadCases, loadCaseEvents, loadAccumulators, loadLatestRuns,
   saveAdjudication, saveClaim, seedIfEmpty,
@@ -86,6 +88,7 @@ export default function ClaimsWorkbench() {
   const [caseEvents, setCaseEvents] = useState<CaseEvent[]>([]);
   const [accumulators, setAccumulators] = useState<Record<string, MemberAccumulators>>({});
   const [adjResults, setAdjResults] = useState<AdjResult[]>([]);
+  const [liveContract, setLiveContract] = useState<ContractTerms | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -145,6 +148,19 @@ export default function ClaimsWorkbench() {
   }, [selectedClaim, cases]);
   const selectedCaseEvents = selectedCase ? caseEvents.filter(e => e.case_id === selectedCase.case_id) : [];
 
+  // Foundation fix: outside demo mode, resolve the real on-file payer
+  // contract instead of showing the always-empty LIVE_CONTRACT stub.
+  // PlanBenefits (deductible/OOP/coinsurance) has no real DualPay data
+  // source yet, so LIVE_PLAN stays a stub — see live-stubs.ts.
+  useEffect(() => {
+    if (isDemoModeEnabled()) { setLiveContract(null); return; }
+    const payerName = selectedClaim?.intel?.payer_name;
+    if (!payerName) { setLiveContract(null); return; }
+    let cancelled = false;
+    loadLiveContract(payerName).then(c => { if (!cancelled) setLiveContract(c); });
+    return () => { cancelled = true; };
+  }, [selectedClaim?.claim_id, selectedClaim?.intel?.payer_name]);
+
   return (
     <div className="flex flex-col h-full">
       <PageHeader
@@ -168,7 +184,7 @@ export default function ClaimsWorkbench() {
                 claim={selectedClaim} result={selectedResult}
                 caseData={selectedCase} caseEvents={selectedCaseEvents}
                 claims={claims} adjResults={adjResults} accumulators={accumulators}
-                contract={isDemoModeEnabled() ? demoContract : LIVE_CONTRACT}
+                contract={isDemoModeEnabled() ? demoContract : (liveContract ?? LIVE_CONTRACT)}
                 plan={isDemoModeEnabled() ? demoPlan : LIVE_PLAN}
                 priorOutcomes={isDemoModeEnabled() ? demoPriorOutcomes : []}
                 onSelectClaim={setSelectedClaimId}
