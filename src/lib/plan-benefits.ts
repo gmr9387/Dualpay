@@ -69,6 +69,45 @@ export async function createPlanBenefit(input: {
   return data as unknown as PlanBenefitRecord;
 }
 
+/**
+ * In-place correction of an existing plan row (e.g. fixing a typo'd
+ * deductible). Does not bump plan_version — that's reserved for a real
+ * new plan revision via createPlanBenefit. plan_id/org_id are immutable.
+ */
+export async function updatePlanBenefit(plan_id: string, input: {
+  payer_name: string; plan_name: string; plan_year: number;
+  deductible_individual: number; deductible_family: number;
+  oop_max_individual: number; oop_max_family: number;
+  coinsurance_rate: number; copay_amount?: number | null;
+  cob_policy?: string; covered_services?: PlanBenefitRecord['covered_services'];
+  effective_date: string; termination_date?: string | null;
+}): Promise<PlanBenefitRecord | null> {
+  const patch = {
+    payer_name: input.payer_name,
+    plan_name: input.plan_name,
+    plan_year: input.plan_year,
+    deductible_individual: input.deductible_individual,
+    deductible_family: input.deductible_family,
+    oop_max_individual: input.oop_max_individual,
+    oop_max_family: input.oop_max_family,
+    coinsurance_rate: input.coinsurance_rate,
+    copay_amount: input.copay_amount ?? null,
+    cob_policy: input.cob_policy ?? 'standard',
+    covered_services: (input.covered_services ?? []) as unknown as Json,
+    effective_date: input.effective_date,
+    termination_date: input.termination_date ?? null,
+  };
+  const { data, error } = await sb.from('plan_benefits').update(patch).eq('plan_id', plan_id).select('*').single();
+  if (error || !data) { console.error('[plan-benefits] update failed', error?.message); return null; }
+  await appendOpsEvent({
+    kind: 'plan_benefits_updated',
+    summary: `Plan benefits updated: ${input.payer_name} — ${input.plan_name}`,
+    payload: { plan_id },
+  });
+  window.dispatchEvent(new Event(PLAN_BENEFITS_EVENT));
+  return data as unknown as PlanBenefitRecord;
+}
+
 function toKernelPlan(r: PlanBenefitRecord): PlanBenefits {
   return {
     plan_id: r.plan_id,

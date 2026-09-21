@@ -55,6 +55,7 @@ export type OpsEventKind =
   | 'edi_normalized'
   | 'edi_imported'
   | 'fee_assessed'
+  | 'plan_benefits_updated'
   | 'recovery_report_generated'
   | 'recovery_report_sent'
   | 'client_response_recorded';

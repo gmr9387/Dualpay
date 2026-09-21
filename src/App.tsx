@@ -148,6 +148,7 @@ const ProtectedShell = () => (
           <Route path="/contracts/:contractId" element={<ContractDetail />} />
           <Route path="/plan-benefits" element={<PlanBenefitsHome />} />
           <Route path="/plan-benefits/upload" element={<PlanBenefitsUpload />} />
+          <Route path="/plan-benefits/:planId/edit" element={<PlanBenefitsUpload />} />
           <Route path="/automation" element={<AutomationHome />} />
           <Route path="/automation/jobs" element={<AutomationJobs />} />
           <Route path="/automation/rules" element={<AutomationRules />} />

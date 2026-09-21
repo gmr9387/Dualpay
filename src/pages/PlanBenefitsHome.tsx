@@ -59,7 +59,11 @@ export default function PlanBenefitsHome() {
               {filtered.map(p => (
                 <tr key={p.plan_id} className="border-b hover:bg-muted/40">
                   <td className="p-2 font-medium">{p.payer_name}</td>
-                  <td className="p-2 inline-flex items-center gap-1"><FileText className="h-3 w-3" />{p.plan_name}</td>
+                  <td className="p-2">
+                    <Link to={`/plan-benefits/${p.plan_id}/edit`} className="text-primary hover:underline inline-flex items-center gap-1">
+                      <FileText className="h-3 w-3" />{p.plan_name}
+                    </Link>
+                  </td>
                   <td className="p-2 font-mono">v{p.plan_version}</td>
                   <td className="p-2 font-mono">{p.plan_year}</td>
                   <td className="p-2 text-right font-mono">{formatCents(p.deductible_individual)}</td>

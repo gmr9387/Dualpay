@@ -1,16 +1,19 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { createPlanBenefit } from '@/lib/plan-benefits';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { createPlanBenefit, getPlanBenefit, updatePlanBenefit } from '@/lib/plan-benefits';
 import { useAuth } from '@/hooks/use-auth';
 import { useOrg } from '@/hooks/use-org';
 import { can } from '@/lib/role-permissions';
 import type { CoveredService } from '@/types/claim';
-import { Upload, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Upload, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 
 const dollarsToCents = (v: string): number => Math.round((parseFloat(v) || 0) * 100);
+const centsToDollars = (c: number): string => c ? (c / 100).toFixed(2) : '';
 
 export default function PlanBenefitsUpload() {
   const navigate = useNavigate();
+  const { planId } = useParams();
+  const isEdit = !!planId;
   const { user } = useAuth();
   const { currentOrg } = useOrg();
   const allowed = can.upload(currentOrg?.role);
@@ -29,10 +32,44 @@ export default function PlanBenefitsUpload() {
   const [terminationDate, setTerminationDate] = useState('');
   const [coveredServicesJson, setCoveredServicesJson] = useState('');
   const [busy, setBusy] = useState(false);
+  const [loadingExisting, setLoadingExisting] = useState(isEdit);
+  const [notFound, setNotFound] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; plan_id?: string; error?: string } | null>(null);
 
+  useEffect(() => {
+    if (!planId) return;
+    let cancelled = false;
+    getPlanBenefit(planId).then(plan => {
+      if (cancelled) return;
+      if (!plan) { setNotFound(true); setLoadingExisting(false); return; }
+      setPayerName(plan.payer_name);
+      setPlanName(plan.plan_name);
+      setPlanYear(String(plan.plan_year));
+      setDeductibleInd(centsToDollars(plan.deductible_individual));
+      setDeductibleFam(centsToDollars(plan.deductible_family));
+      setOopInd(centsToDollars(plan.oop_max_individual));
+      setOopFam(centsToDollars(plan.oop_max_family));
+      setCoinsurance(String(plan.coinsurance_rate * 100));
+      setCopay(plan.copay_amount ? centsToDollars(plan.copay_amount) : '');
+      setCobPolicy(plan.cob_policy ?? 'standard');
+      setEffectiveDate(plan.effective_date.slice(0, 10));
+      setTerminationDate(plan.termination_date?.slice(0, 10) ?? '');
+      setCoveredServicesJson(plan.covered_services?.length ? JSON.stringify(plan.covered_services, null, 2) : '');
+      setLoadingExisting(false);
+    });
+    return () => { cancelled = true; };
+  }, [planId]);
+
   if (!allowed) {
-    return <div className="p-6 text-sm text-muted-foreground">Analyst role or higher required to add plan benefits.</div>;
+    return <div className="p-6 text-sm text-muted-foreground">Analyst role or higher required to {isEdit ? 'edit' : 'add'} plan benefits.</div>;
+  }
+
+  if (loadingExisting) {
+    return <div className="h-full flex items-center justify-center text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading plan…</div>;
+  }
+
+  if (notFound) {
+    return <div className="p-6 text-sm text-muted-foreground">Plan not found.</div>;
   }
 
   const submit = async () => {
@@ -48,7 +85,7 @@ export default function PlanBenefitsUpload() {
         return;
       }
     }
-    const plan = await createPlanBenefit({
+    const fields = {
       payer_name: payerName,
       plan_name: planName,
       plan_year: parseInt(planYear, 10) || new Date().getFullYear(),
@@ -62,8 +99,10 @@ export default function PlanBenefitsUpload() {
       covered_services,
       effective_date: effectiveDate,
       termination_date: terminationDate || null,
-      uploaded_by: user?.email ?? undefined,
-    });
+    };
+    const plan = isEdit
+      ? await updatePlanBenefit(planId, fields)
+      : await createPlanBenefit({ ...fields, uploaded_by: user?.email ?? undefined });
     setResult(plan ? { ok: true, plan_id: plan.plan_id } : { ok: false, error: 'Save failed — check console for details.' });
     setBusy(false);
   };
@@ -71,10 +110,11 @@ export default function PlanBenefitsUpload() {
   return (
     <div className="h-full overflow-y-auto p-6 max-w-3xl space-y-4">
       <header>
-        <h1 className="text-xl font-bold">Add Plan Benefits</h1>
+        <h1 className="text-xl font-bold">{isEdit ? 'Edit Plan Benefits' : 'Add Plan Benefits'}</h1>
         <p className="text-[12.5px] text-muted-foreground">
-          Real, versioned plan benefit data. Once on file for a payer, non-demo claims for that payer are adjudicated
-          against these real terms instead of being skipped.
+          {isEdit
+            ? 'Correcting an existing plan in place. This does not create a new version — use Add Plan Benefits for a real plan-year revision.'
+            : 'Real, versioned plan benefit data. Once on file for a payer, non-demo claims for that payer are adjudicated against these real terms instead of being skipped.'}
         </p>
       </header>
 
@@ -119,12 +159,12 @@ export default function PlanBenefitsUpload() {
       <div className="flex items-center justify-between">
         <button onClick={submit} disabled={busy || !payerName || !planName}
           className="px-4 py-2 text-[13px] rounded-md bg-primary text-primary-foreground inline-flex items-center gap-2 disabled:opacity-50">
-          <Upload className="h-3.5 w-3.5" /> {busy ? 'Saving…' : 'Save Plan'}
+          <Upload className="h-3.5 w-3.5" /> {busy ? 'Saving…' : isEdit ? 'Save Changes' : 'Save Plan'}
         </button>
         {result && (
           <div className="text-[12.5px] flex items-center gap-2">
             {result.ok ? <CheckCircle2 className="h-4 w-4 text-status-paid" /> : <AlertCircle className="h-4 w-4 text-status-denied" />}
-            <span>{result.ok ? 'Plan saved.' : result.error}</span>
+            <span>{result.ok ? (isEdit ? 'Changes saved.' : 'Plan saved.') : result.error}</span>
             {result.ok && <button onClick={() => navigate('/plan-benefits')} className="text-primary underline">View plans</button>}
           </div>
         )}
