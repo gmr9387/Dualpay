@@ -62,7 +62,8 @@ const SECTIONS: NavSection[] = [
     minRole: 'manager',
     items: [
       { to: '/contracts',           label: 'Contracts',          icon: BookText,    badge: 'NEW' },
-      { to: '/contracts/disputes',  label: 'Underpayment Disputes', icon: AlertOctagon, badge: 'NEW' },
+      { to: '/plan-benefits',       label: 'Plan Benefits',      icon: ShieldCheck, badge: 'NEW' },
+      { to: '/contracts/disputes',  label: 'Contract Recovery',  icon: AlertOctagon, badge: 'NEW' },
       { to: '/contracts/analytics', label: 'Contract Analytics', icon: BarChart3,   badge: 'NEW' },
     ],
   },

@@ -20,7 +20,11 @@ import { toast } from '@/hooks/use-toast';
 import { buildAppealPacketPdf } from '@/lib/pdf-appeal';
 import { generateAppealPacket } from '@/engine/appeal-packet-generator';
 import { uploadAppealPacket } from '@/lib/evidence-documents';
-import { ArrowLeft, Loader2, CheckCircle2, AlertCircle, XCircle, FileText, Send, Inbox, Download, Info } from 'lucide-react';
+import {
+  useAppealRecoveryCases, canTransitionTo, type AppealRecoveryCase, type AppealRecoveryState,
+} from '@/hooks/use-appeal-recovery-cases';
+import { appendOpsEvent } from '@/lib/ops-events';
+import { ArrowLeft, Loader2, CheckCircle2, AlertCircle, XCircle, FileText, Send, Inbox, Download, Info, ClipboardList } from 'lucide-react';
 
 export default function AppealPacket() {
   const { claimId } = useParams();
@@ -31,6 +35,7 @@ export default function AppealPacket() {
   const claim = useMemo(() => claims?.find(c => c.claim_id === claimId), [claims, claimId]);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const { cases: recoveryCases, create: createCase, advance: advanceCase } = useAppealRecoveryCases();
 
   if (isLoading) return <div className="h-full flex items-center justify-center text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading…</div>;
 
@@ -58,6 +63,23 @@ export default function AppealPacket() {
     : verdict === 'MISSING_REQUIREMENTS' ? 'bg-status-pending/15 text-status-pending border-status-pending/30'
     : 'bg-status-denied/15 text-status-denied border-status-denied/30';
 
+  const resolvedClaimId = claim.claim_id;
+  const recoveryCase = recoveryCases.find(c => c.claim_id === resolvedClaimId) ?? null;
+
+  // Drives the real appeal_recovery_cases state machine alongside packet
+  // generation/submission, closing the gap where "Mark Submitted" used to
+  // only write an ops_events audit row with no linked case for Guided
+  // Recovery to track through payer response -> outcome.
+  async function ensureAppealCase(): Promise<AppealRecoveryCase | null> {
+    return recoveryCases.find(c => c.claim_id === resolvedClaimId) ?? await createCase(resolvedClaimId);
+  }
+  async function advanceAppealCaseTo(
+    rc: AppealRecoveryCase | null, target: AppealRecoveryState, extra?: { packet_id?: string },
+  ): Promise<AppealRecoveryCase | null> {
+    if (!rc || rc.current_state === target || !canTransitionTo(rc.current_state, target)) return rc;
+    return advanceCase(rc, target, makeIdempotencyKey('appeal'), extra);
+  }
+
   return (
     <div className="flex flex-col h-full">
       <PageHeader
@@ -70,6 +92,10 @@ export default function AppealPacket() {
             </Link>
             <Link to={`/denials/${claim.claim_id}`} className="h-8 px-3 inline-flex items-center gap-1.5 text-[12px] rounded-md border bg-card hover:bg-muted text-foreground">
               Open claim
+            </Link>
+            <Link to={`/recover?claim=${encodeURIComponent(claim.claim_id)}`} className="h-8 px-3 inline-flex items-center gap-1.5 text-[12px] rounded-md border bg-card hover:bg-muted text-foreground">
+              <ClipboardList className="h-3.5 w-3.5" />
+              {recoveryCase ? `Recovery Case · ${recoveryCase.current_state.replace(/_/g, ' ')}` : 'Recovery Case'}
             </Link>
           </div>
         }
@@ -124,6 +150,12 @@ export default function AppealPacket() {
                     summary: `Packet ${filename} generated for ${claim.intel.payer_name}`,
                     payload: { filename, org_id: currentOrg.org_id },
                   });
+                  try {
+                    const rc = await ensureAppealCase();
+                    await advanceAppealCaseTo(rc, 'appeal_filed', { packet_id: filename });
+                  } catch (caseErr) {
+                    console.warn('[appeal] recovery case link failed', caseErr);
+                  }
                 }
                 toast({ title: 'Packet downloaded', description: filename });
               } catch (err) {
@@ -157,6 +189,13 @@ export default function AppealPacket() {
                   .eq('claim_id', claim.claim_id)
                   .eq('org_id', currentOrg.org_id);
                 if (statusErr) console.warn('[appeal] status transition failed', statusErr.message);
+                try {
+                  let rc = await ensureAppealCase();
+                  rc = await advanceAppealCaseTo(rc, 'appeal_filed');
+                  await advanceAppealCaseTo(rc, 'submitted');
+                } catch (caseErr) {
+                  console.warn('[appeal] recovery case advance failed', caseErr);
+                }
                 setSubmitted(true);
                 toast({ title: 'Marked submitted', description: `${claim.claim_id} → ${payerName} · deliver packet via payer portal/fax/mail` });
               } catch (err) {

@@ -170,6 +170,13 @@ percent of Medicare
 
 Underpayment disputes use deterministic deduplication keys.
 
+The full recovery workflow runs automatically on every 835 remittance import: match each line to the real, currently-effective fee schedule → readjudicate expected vs. paid → open a deduplicated dispute → assess a contingency fee only on an actual recovery (org-configurable, off by default) → generate a client-facing recovery report → track the client's response (pursue, decline, or handle internally).
+
+Plan Benefits
+Deductibles, out-of-pocket maximums, coinsurance, copay, COB policy, and covered services are versioned, org-scoped, admin-entered records per payer — the plan-side counterpart to payer contracts. Existing entries can be corrected in place (typo'd deductible, wrong coinsurance rate) without disturbing plan_version, which is reserved for a real new plan-year revision.
+
+Outside demo mode, the deterministic adjudication engine only runs for a claim once both a real contract and a real plan are on file for that claim's payer; a claim for a payer missing either is left un-adjudicated rather than priced against placeholder data.
+
 Recovery Operations
 DualPay supports:
 
@@ -188,6 +195,12 @@ appeal lifecycle
 outcomes
 
 reporting
+
+Denial → Appeal → Outcome is a single closed loop: a denial is detected on import (deterministic CARC/RARC scoring, persisted to the claim) → an appeal packet is generated and, on submission, drives a real `appeal_recovery_cases` state machine (denied → appeal filed → submitted) → Guided Recovery tracks the payer's response and either a real recovery (written atomically to `recovery_outcomes`, the same table Executive/Outcome Log read) or a real write-off, both with a captured reason/amount rather than the case going stale. Denial and Appeal Packet pages link directly into the recovery case so the loop doesn't require separately discovering a different page.
+
+Case Management is a closed loop: `autoCreateCase` opens a real `cases` row (with an initial `CASE_CREATED` event) when automation detects a high-severity denial, a major underpayment, or a repeat payer issue. From the Claims Workbench case tab, staff can now move a case through its real lifecycle (`OPEN → IN_REVIEW → PENDING_RETRO/RESOLVED → CLOSED`, with reopen) and add timestamped notes — both write real `case_events` rows (`STATUS_CHANGED`, `NOTE_ADDED`) alongside the retro-recalculation and accumulator-impact views that already existed, so a case that gets auto-created has a real path to resolution instead of sitting untouched.
+
+EDI Errors is a closed loop: every X12 validation issue the gateway persists on ingest (`ingestEdiFile` → `edi_errors`) can be marked resolved or ignored with a note from the EDI Errors page, instead of accumulating in a read-only list with no way to signal it was reviewed. Resolution is attributed to the real signed-in user and timestamped, and the default view hides resolved/ignored issues so the open queue reflects real outstanding work.
 
 Automation
 DualPay includes:
@@ -308,6 +321,8 @@ evidence
 
 contracts
 
+plan benefits
+
 automation
 
 lineage
@@ -357,6 +372,9 @@ Important workflows run through durable background execution.
 Replay and Idempotency
 Replay records and deduplication keys prevent duplicate operations.
 
+Type Safety
+`tsc -p tsconfig.app.json` (the config that actually resolves this repo's files — the bare `tsconfig.json` is a solution-style file with no `include`/`files` and checks nothing under `--noEmit`) reports zero errors. Supabase calls use the real generated `Database` type directly; trigger-populated columns (`org_id` set by a `BEFORE INSERT` trigger, never client-supplied) are made explicit via `src/lib/supabase-helpers.ts`'s `withTriggerOrgId()` rather than a blanket type-erasing cast.
+
 Engineering Incidents
 DualPay produced several useful corrections:
 
@@ -369,6 +387,8 @@ scheduler failure handling improved
 storage isolation tested
 
 X12 validation hardened
+
+a repo-wide Supabase client type-erasure cast was found and removed (see Type Safety below); it had been hiding several real bugs, including a case-creation insert that was missing a required primary key
 
 Validation
 Validation includes:
@@ -396,11 +416,16 @@ Capability	Status
 Adjudication	Implemented
 COB	Implemented
 Denial detection	Implemented
-Contract recovery	Implemented
+Denial → Appeal → Outcome loop	Implemented (real appeal_recovery_cases state machine, linked from denial/packet, outcomes written atomically)
+Case management loop	Implemented (auto-created on trigger, real status transitions + notes from Claims Workbench)
+EDI error resolution loop	Implemented (resolve/ignore with note, attributed + timestamped)
+Contract recovery	Implemented (automatic sweep on import, fee assessment, client report + response)
+Plan benefits	Implemented
 Durable jobs	Implemented
 Scheduler	Implemented
 Replay	Implemented
 Idempotency	Partial
+Type safety (tsc, full repo)	Implemented (0 errors)
 X12 835	Implemented
 X12 837P	Implemented
 X12 837I	Implemented

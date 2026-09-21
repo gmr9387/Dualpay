@@ -5,13 +5,14 @@
  * scheduled for retry or already dead-lettered).  Resets attempts when the
  * caller asks for a clean retry; otherwise preserves attempt history.
  */
-import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { appendOpsEvent } from '@/lib/ops-events';
 import { QUEUE_EVENT } from './queue-manager';
+import type { Database } from '@/integrations/supabase/types';
 import type { QueueJob } from '@/types/platform';
 
-const sb = supabase as ReturnType<typeof createClient>;
+const sb = supabase;
+type JobQueueUpdate = Database['public']['Tables']['job_queue']['Update'];
 const notify = () => window.dispatchEvent(new Event(QUEUE_EVENT));
 
 export interface RetryOptions {
@@ -25,7 +26,7 @@ export async function retryJob(queue_job_id: string, opts: RetryOptions = {}): P
   const { data: existing } = await sb.from('job_queue').select('*').eq('queue_job_id', queue_job_id).maybeSingle();
   if (!existing) return null;
   const next_attempt_at = new Date(Date.now() + (opts.delay_ms ?? 0)).toISOString();
-  const patch: Record<string, unknown> = {
+  const patch: JobQueueUpdate = {
     status: 'queued',
     worker_id: null,
     locked_at: null,

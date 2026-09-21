@@ -36,6 +36,9 @@ export interface FeeScheduleRow {
 export type DisputeSeverity = 'low' | 'medium' | 'high' | 'critical';
 export type DisputeStatus = 'open' | 'in_review' | 'submitted' | 'recovered' | 'closed';
 
+/** The client's (provider org's) decision after receiving a recovery report. */
+export type ClientResponse = 'pending' | 'approved_pursue' | 'declined' | 'handling_internally';
+
 export interface UnderpaymentDispute {
   dispute_id: string;
   org_id: string;
@@ -43,6 +46,7 @@ export interface UnderpaymentDispute {
   contract_id?: string | null;
   payer_name: string;
   procedure_code?: string | null;
+  service_date?: string | null;
   expected_amount_cents: number;
   allowed_amount_cents: number;
   paid_amount_cents: number;
@@ -51,6 +55,16 @@ export interface UnderpaymentDispute {
   severity: DisputeSeverity | string;
   status: DisputeStatus | string;
   explanation?: string | null;
+  dedupe_key?: string | null;
+  // Contingency fee — assessed only once status reaches 'recovered'.
+  fee_percent_bps: number;
+  assessed_fee_cents: number;
+  // Client-facing recovery report.
+  client_response: ClientResponse | string | null;
+  client_response_at?: string | null;
+  client_response_notes?: string | null;
+  report_generated_at?: string | null;
+  report_sent_at?: string | null;
   created_at?: string;
   updated_at?: string;
 }

@@ -86,7 +86,8 @@ export default function MyWorklist() {
         const next = { ...meta };
         for (const r of rows ?? []) {
           const p = (r.payload as Record<string, unknown> | null);
-          next[r.claim_id] = { payer: p?.ohi_indicators?.[0]?.payer_name ?? '—' };
+          const ohi = p?.ohi_indicators as Array<{ payer_name?: string }> | undefined;
+          next[r.claim_id] = { payer: ohi?.[0]?.payer_name ?? '—' };
         }
         setMeta(next);
       }
@@ -350,11 +351,14 @@ function UnassignedPool({
         return !a || (!a.assigned_to_user_id && a.status !== 'resolved');
       })
       .slice(0, 20)
-      .map(c => ({
-        claim_id: c.claim_id,
-        total_billed_cents: Number(c.total_billed_cents ?? 0),
-        payer: ((c.payload as Record<string, unknown> | null)?.ohi_indicators?.[0]?.payer_name) ?? '—',
-      }));
+      .map(c => {
+        const ohi = (c.payload as Record<string, unknown> | null)?.ohi_indicators as Array<{ payer_name?: string }> | undefined;
+        return {
+          claim_id: c.claim_id,
+          total_billed_cents: Number(c.total_billed_cents ?? 0),
+          payer: ohi?.[0]?.payer_name ?? '—',
+        };
+      });
     setPool(items);
     setLoading(false);
   }, [orgId]);

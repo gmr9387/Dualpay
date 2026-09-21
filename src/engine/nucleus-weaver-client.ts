@@ -68,5 +68,5 @@ export async function scoreViaNucleusWeaver(
     throw new Error(`Nucleus Weaver scoring failed: ${error.message}`);
   }
 
-  return { configured: true, ...(data as Omit<NucleusWeaverScoreResult, 'configured'>) };
+  return { configured: true, ...(data as Omit<NucleusWeaverScoreResult, 'configured'>) } as NucleusWeaverScoreResult;
 }

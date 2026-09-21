@@ -5,7 +5,7 @@ import { PageHeader, Panel, SeverityBadge, StateBadge, OwnerChip, Recoverability
 import { CATEGORY_LABEL } from '@/engine/denial-intelligence';
 import { explainRecoverability } from '@/engine/recoverability';
 import { nextBestAction, URGENCY_CLS, URGENCY_LABEL } from '@/engine/next-action';
-import { ArrowLeft, AlertOctagon, FileText, CheckCircle2, Send, Loader2, Clock, TrendingUp, TrendingDown as TrendDownIcon, Sparkles, Zap } from 'lucide-react';
+import { ArrowLeft, AlertOctagon, FileText, CheckCircle2, Send, Loader2, Clock, TrendingUp, TrendingDown as TrendDownIcon, Sparkles, Zap, ClipboardList } from 'lucide-react';
 
 export default function DenialDetail() {
   const { claimId } = useParams();
@@ -156,6 +156,9 @@ export default function DenialDetail() {
               <div className="space-y-1.5">
                 <Link to={`/packet/${claim.claim_id}`} className="w-full h-8 px-2.5 rounded-md text-[12px] font-medium inline-flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
                   <Send className="h-3.5 w-3.5" /> Build Appeal Packet
+                </Link>
+                <Link to={`/recover?claim=${encodeURIComponent(claim.claim_id)}`} className="w-full h-8 px-2.5 rounded-md text-[12px] font-medium inline-flex items-center gap-2 border bg-card text-foreground hover:bg-muted">
+                  <ClipboardList className="h-3.5 w-3.5" /> Track Recovery Case
                 </Link>
                 <ActionBtn icon={<FileText className="h-3.5 w-3.5" />} label="Attach Evidence" />
                 <ActionBtn icon={<CheckCircle2 className="h-3.5 w-3.5" />} label="Mark Resolved" />

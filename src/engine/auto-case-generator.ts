@@ -9,12 +9,13 @@
  * Reuses the existing case-management engine helper (createCaseEvent).
  * Does NOT duplicate the case domain model.
  */
-import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { createCaseEvent } from '@/engine/case-management';
 import { appendOpsEvent } from '@/lib/ops-events';
+import { withTriggerOrgId } from '@/lib/supabase-helpers';
+import type { Json } from '@/integrations/supabase/types';
 
-const sb = supabase as ReturnType<typeof createClient>;
+const sb = supabase;
 
 export type AutoCaseTrigger =
   | 'high_severity_denial'
@@ -44,21 +45,23 @@ const TRIGGER_TAG: Record<AutoCaseTrigger, string> = {
 export async function autoCreateCase(input: AutoCaseInput): Promise<AutoCaseResult | null> {
   const tags = ['automation', TRIGGER_TAG[input.trigger], ...(input.tags ?? [])];
 
+  // cases.case_id has no DB default (TEXT PRIMARY KEY) — must be generated here.
+  // Claim linkage lives in case_claim_links (inserted below), not a column here.
   const caseRow = {
+    case_id: `CASE-${crypto.randomUUID()}`,
     member_id: input.member_id ?? 'unknown',
     status: 'OPEN',
-    claim_ids: [input.claim_id],
     description: input.description,
     tags,
   };
-  const { data: created, error } = await sb.from('cases').insert([caseRow]).select('*').single();
+  const { data: created, error } = await sb.from('cases').insert(withTriggerOrgId([caseRow])).select('*').single();
   if (error || !created) {
     console.error('[auto-case] insert failed', error?.message);
     return null;
   }
 
   // Link claim → case in case_claim_links (best-effort; ignore conflict).
-  await sb.from('case_claim_links').insert([{ case_id: created.case_id, claim_id: input.claim_id }]).then(
+  await sb.from('case_claim_links').insert(withTriggerOrgId([{ case_id: created.case_id, claim_id: input.claim_id }])).then(
     () => {}, () => {},
   );
 
@@ -69,15 +72,15 @@ export async function autoCreateCase(input: AutoCaseInput): Promise<AutoCaseResu
     input.claim_id,
     { source: 'automation', trigger: input.trigger },
   );
-  await sb.from('case_events').insert([{
+  await sb.from('case_events').insert(withTriggerOrgId([{
     event_id: evt.event_id,
     case_id: evt.case_id,
-    timestamp: evt.timestamp,
+    occurred_at: evt.timestamp,
     event_type: evt.event_type,
     claim_id: evt.claim_id ?? null,
     description: evt.description,
-    metadata: evt.metadata as never,
-  }]).then(() => {}, () => {});
+    metadata: evt.metadata as Json,
+  }])).then(() => {}, () => {});
 
   await appendOpsEvent({
     kind: 'case_auto_created',

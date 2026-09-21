@@ -14,7 +14,7 @@ import {
 } from '@/data/repository';
 import type { Claim, AdjudicationRun, MemberAccumulators } from '@/types/claim';
 import type { TraceObject } from '@/types/trace';
-import type { Case, CaseEvent } from '@/types/case';
+import type { Case, CaseEvent, CaseStatus } from '@/types/case';
 import { ClaimList } from '@/components/admin/ClaimList';
 import { StatsBar } from '@/components/admin/StatsBar';
 import { AppShell } from '@/components/admin/AppShell';
@@ -131,6 +131,13 @@ const Index = () => {
     ? caseEvents.filter((event) => event.case_id === selectedCase.case_id)
     : [];
 
+  const handleCaseEvent = (event: CaseEvent, newStatus?: CaseStatus) => {
+    setCaseEvents((prev) => [...prev, event]);
+    if (newStatus) {
+      setCases((prev) => prev.map((c) => (c.case_id === event.case_id ? { ...c, status: newStatus } : c)));
+    }
+  };
+
   const breadcrumb = [
     { label: 'Operations' },
     { label: 'Claims Workbench', onClick: () => setSelectedClaimId(null) },
@@ -180,6 +187,7 @@ const Index = () => {
                   contract={isDemoModeEnabled() ? demoContract : LIVE_CONTRACT}
                   plan={isDemoModeEnabled() ? demoPlan : LIVE_PLAN}
                   priorOutcomes={isDemoModeEnabled() ? demoPriorOutcomes : []}
+                  onCaseEvent={handleCaseEvent}
                   onSelectClaim={setSelectedClaimId}
                 />
               ) : (

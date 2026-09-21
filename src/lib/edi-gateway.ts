@@ -14,7 +14,7 @@ import { validateX12 } from '@/engine/edi-validator';
 import { normalize835, normalize837, type CanonicalClaim837 } from '@/engine/edi-normalizer';
 import { appendOpsEvent } from '@/lib/ops-events';
 import type { CanonicalRemittance } from '@/types/import';
-import type { EdiErrorRow, EdiTransactionRow } from '@/types/edi';
+import type { EdiErrorRow, EdiErrorStatus, EdiTransactionRow } from '@/types/edi';
 
 export { isLikelyX12 };
 
@@ -152,4 +152,34 @@ export async function listEdiErrors(): Promise<EdiErrorRow[]> {
     .limit(500);
   if (error) { console.error('[edi] errors failed', error.message); return []; }
   return (data ?? []) as EdiErrorRow[];
+}
+
+export async function resolveEdiError(
+  errorId: string,
+  status: Extract<EdiErrorStatus, 'resolved' | 'ignored'>,
+  note?: string,
+): Promise<EdiErrorRow | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { data, error } = await supabase
+    .from('edi_errors')
+    .update({
+      status,
+      resolution_note: note ?? null,
+      resolved_at: new Date().toISOString(),
+      resolved_by: user?.id ?? null,
+    } as never)
+    .eq('error_id', errorId)
+    .select('*')
+    .single();
+
+  if (error) { console.error('[edi] error resolution failed', error.message); return null; }
+
+  await appendOpsEvent({
+    kind: 'edi_error_resolved',
+    summary: `EDI error ${status}: ${errorId.slice(0, 8)}…`,
+    payload: { error_id: errorId, status },
+  });
+
+  return data as EdiErrorRow;
 }

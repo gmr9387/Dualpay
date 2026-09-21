@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { Case, CaseEvent, AdjudicationDiff } from '@/types/case';
+import type { Case, CaseEvent, CaseStatus, AdjudicationDiff } from '@/types/case';
 import type { AdjudicationRun, Claim } from '@/types/claim';
 import type { TraceObject } from '@/types/trace';
 import {
@@ -7,8 +7,11 @@ import {
   retroRecalculate,
   type RetroResult,
 } from '@/engine/case-management';
+import { CASE_STATUS_TRANSITIONS, updateCaseStatus, addCaseNote } from '@/lib/case-actions';
+import { useOrg } from '@/hooks/use-org';
+import { can } from '@/lib/role-permissions';
 import type { MemberAccumulators, ContractTerms, PlanBenefits, PriorPayerOutcome } from '@/types/claim';
-import { Briefcase, Clock, ArrowRightLeft, AlertTriangle, ChevronDown, ChevronRight, RotateCcw, GitCompareArrows } from 'lucide-react';
+import { Briefcase, Clock, ArrowRightLeft, AlertTriangle, ChevronDown, ChevronRight, RotateCcw, GitCompareArrows, StickyNote, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface AdjResult {
@@ -27,6 +30,7 @@ interface CasePanelProps {
   plan: PlanBenefits;
   priorOutcomes: PriorPayerOutcome[];
   onSelectClaim: (id: string) => void;
+  onCaseEvent: (event: CaseEvent, newStatus?: CaseStatus) => void;
 }
 
 function formatCents(cents: number): string {
@@ -42,8 +46,12 @@ const EVENT_ICONS: Record<string, typeof Clock> = {
   CASE_CREATED: Briefcase,
   CLAIM_LINKED: ArrowRightLeft,
   CLAIM_REVERSED: AlertTriangle,
+  CLAIM_ADJUSTED: GitCompareArrows,
   RETRO_TRIGGERED: RotateCcw,
   RETRO_COMPLETED: GitCompareArrows,
+  ACCUMULATOR_UPDATED: ArrowRightLeft,
+  STATUS_CHANGED: CheckCircle2,
+  NOTE_ADDED: StickyNote,
 };
 
 export function CasePanel({
@@ -56,11 +64,34 @@ export function CasePanel({
   plan,
   priorOutcomes,
   onSelectClaim,
+  onCaseEvent,
 }: CasePanelProps) {
+  const { currentOrg } = useOrg();
+  const canEdit = can.edit(currentOrg?.role);
   const [showTimeline, setShowTimeline] = useState(true);
   const [showAccImpact, setShowAccImpact] = useState(true);
   const [retroResults, setRetroResults] = useState<RetroResult[] | null>(null);
   const [selectedRetro, setSelectedRetro] = useState<string | null>(null);
+  const [noteText, setNoteText] = useState('');
+  const [statusBusy, setStatusBusy] = useState(false);
+  const [noteBusy, setNoteBusy] = useState(false);
+
+  const nextStatuses = CASE_STATUS_TRANSITIONS[caseData.status];
+
+  const handleStatusChange = async (newStatus: CaseStatus) => {
+    setStatusBusy(true);
+    const evt = await updateCaseStatus(caseData.case_id, newStatus);
+    if (evt) onCaseEvent(evt, newStatus);
+    setStatusBusy(false);
+  };
+
+  const handleAddNote = async () => {
+    if (!noteText.trim()) return;
+    setNoteBusy(true);
+    const evt = await addCaseNote(caseData.case_id, noteText.trim());
+    if (evt) { onCaseEvent(evt); setNoteText(''); }
+    setNoteBusy(false);
+  };
 
   const runsMap = useMemo(() => {
     const m = new Map<string, AdjudicationRun>();
@@ -107,6 +138,48 @@ export function CasePanel({
           {caseData.status}
         </span>
       </div>
+
+      {/* Case Actions */}
+      {canEdit && (
+        <div className="px-4 py-3 border-b space-y-2.5">
+          {nextStatuses.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground shrink-0">Move to</span>
+              {nextStatuses.map(status => (
+                <Button
+                  key={status}
+                  variant="outline"
+                  size="sm"
+                  className="h-6 px-2 text-[10px]"
+                  disabled={statusBusy}
+                  onClick={() => handleStatusChange(status)}
+                >
+                  {status.replace(/_/g, ' ')}
+                </Button>
+              ))}
+            </div>
+          )}
+          <div className="flex items-start gap-2">
+            <textarea
+              value={noteText}
+              onChange={e => setNoteText(e.target.value)}
+              placeholder="Add a note to this case…"
+              rows={2}
+              className="flex-1 text-xs p-2 rounded border bg-background resize-none"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-2.5 text-[10px] shrink-0"
+              disabled={noteBusy || !noteText.trim()}
+              onClick={handleAddNote}
+            >
+              <StickyNote className="h-3 w-3 mr-1" />
+              Add Note
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Linked Claims */}
       <div className="px-4 py-3 border-b">

@@ -8,6 +8,8 @@ export interface Org {
   org_id: string;
   name: string;
   role: OrgRole;
+  /** Contingency fee (basis points) assessed on a recovered underpayment dispute. 0 = unconfigured. */
+  recovery_fee_percent_bps: number;
 }
 
 interface OrgCtx {
@@ -17,12 +19,14 @@ interface OrgCtx {
   selectOrg: (id: string) => void;
   refresh: () => Promise<void>;
   createOrg: (name: string) => Promise<Org | null>;
+  setRecoveryFeePercent: (bps: number) => Promise<boolean>;
 }
 
 const STORAGE_KEY = 'clarity:current_org_id';
 const Ctx = createContext<OrgCtx>({
   orgs: [], currentOrg: null, loading: true,
   selectOrg: () => {}, refresh: async () => {}, createOrg: async () => null,
+  setRecoveryFeePercent: async () => false,
 });
 
 export function OrgProvider({ children }: { children: ReactNode }) {
@@ -36,13 +40,14 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     const { data, error } = await supabase
       .from('organization_members')
-      .select('role, org_id, organizations(name, org_id)')
+      .select('role, org_id, organizations(name, org_id, recovery_fee_percent_bps)')
       .eq('user_id', user.id);
     if (error) { console.error('[org] load failed', error.message); setLoading(false); return; }
-    const list: Org[] = (data ?? []).map((r: Record<string, unknown>) => ({
+    const list: Org[] = (data ?? []).map((r) => ({
       org_id: r.org_id,
       name: r.organizations?.name ?? 'Untitled Org',
       role: r.role as OrgRole,
+      recovery_fee_percent_bps: r.organizations?.recovery_fee_percent_bps ?? 0,
     }));
     setOrgs(list);
     if (list.length > 0 && (!currentOrgId || !list.find(o => o.org_id === currentOrgId))) {
@@ -72,13 +77,24 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     if (mErr) { console.error('[org] membership failed', mErr.message); return null; }
     await refresh();
     selectOrg(org.org_id);
-    return { org_id: org.org_id, name: org.name, role: 'owner' };
+    return { org_id: org.org_id, name: org.name, role: 'owner', recovery_fee_percent_bps: org.recovery_fee_percent_bps ?? 0 };
   };
 
   const currentOrg = orgs.find(o => o.org_id === currentOrgId) ?? null;
 
+  const setRecoveryFeePercent = async (bps: number): Promise<boolean> => {
+    if (!currentOrg) return false;
+    const { error } = await supabase
+      .from('organizations')
+      .update({ recovery_fee_percent_bps: bps })
+      .eq('org_id', currentOrg.org_id);
+    if (error) { console.error('[org] set fee percent failed', error.message); return false; }
+    await refresh();
+    return true;
+  };
+
   return (
-    <Ctx.Provider value={{ orgs, currentOrg, loading, selectOrg, refresh, createOrg }}>
+    <Ctx.Provider value={{ orgs, currentOrg, loading, selectOrg, refresh, createOrg, setRecoveryFeePercent }}>
       {children}
     </Ctx.Provider>
   );

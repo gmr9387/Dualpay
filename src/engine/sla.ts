@@ -82,7 +82,7 @@ export interface SlaSummary {
   by_owner: Array<{ owner: string; healthy: number; warning: number; breached: number; at_risk_cents: number }>;
 }
 
-export function summarizeSla(claims: C[], assignments: Record<string, { assignee?: string }>): SlaSummary {
+export function summarizeSla(claims: C[], assignments: Record<string, { assignee?: string | null }>): SlaSummary {
   const bySeverity: SlaSummary['by_severity'] = {
     critical: { healthy: 0, warning: 0, breached: 0 },
     high:     { healthy: 0, warning: 0, breached: 0 },

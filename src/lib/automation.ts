@@ -2,14 +2,15 @@
  * Phase 16 — Automation persistence layer.
  * CRUD for automation_jobs + automation_rules.  Reuses appendOpsEvent for audit.
  */
-import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { appendOpsEvent } from '@/lib/ops-events';
+import { withTriggerOrgId } from '@/lib/supabase-helpers';
+import type { Json } from '@/integrations/supabase/types';
 import type {
   AutomationJob, AutomationRule, JobStatus, JobType, JobRunResult, RuleTriggerType,
 } from '@/types/automation';
 
-const sb = supabase as ReturnType<typeof createClient>;
+const sb = supabase;
 
 export const AUTOMATION_EVENT = 'clarity-automation';
 function notify() { window.dispatchEvent(new Event(AUTOMATION_EVENT)); }
@@ -40,9 +41,9 @@ export async function startJob(
     started_at: new Date().toISOString(),
     pipeline_id: options.pipeline_id ?? null,
     parent_job_id: options.parent_job_id ?? null,
-    config: (options.config ?? null) as never,
+    config: (options.config ?? null) as Json,
   };
-  const { data, error } = await sb.from('automation_jobs').insert([row]).select('*').single();
+  const { data, error } = await sb.from('automation_jobs').insert(withTriggerOrgId([row])).select('*').single();
   if (error || !data) { console.error('[automation] start job failed', error?.message); return null; }
   await appendOpsEvent({
     kind: 'job_started',
@@ -63,7 +64,7 @@ export async function completeJob(
     records_succeeded: result.records_succeeded,
     records_failed: result.records_failed,
     recovery_value_cents: result.recovery_value_cents ?? 0,
-    result: (result.details ?? null) as never,
+    result: (result.details ?? null) as Json,
   };
   const { data, error } = await sb.from('automation_jobs')
     .update(patch).eq('job_id', job_id).select('*').single();
@@ -111,10 +112,10 @@ export async function createRule(input: {
     rule_name: input.rule_name,
     description: input.description ?? null,
     trigger_type: input.trigger_type,
-    configuration: (input.configuration ?? {}) as never,
+    configuration: (input.configuration ?? {}) as Json,
     enabled: input.enabled ?? true,
   };
-  const { data, error } = await sb.from('automation_rules').insert([row]).select('*').single();
+  const { data, error } = await sb.from('automation_rules').insert(withTriggerOrgId([row])).select('*').single();
   if (error || !data) { console.error('[automation] create rule failed', error?.message); return null; }
   notify();
   return data as AutomationRule;

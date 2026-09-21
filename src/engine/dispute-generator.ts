@@ -14,7 +14,9 @@ export interface DisputeGenInput {
   claim_id: string;
   payer_name: string;
   procedure_code?: string | null;
+  service_date?: string | null;
   contract?: PayerContract | null;
+  contract_id?: string | null;
   allowed_cents: number;
   paid_cents: number;
   underpayment: UnderpaymentResult;
@@ -29,9 +31,10 @@ export async function maybeGenerateDispute(input: DisputeGenInput): Promise<Unde
 
   return createDispute({
     claim_id: input.claim_id,
-    contract_id: input.contract?.contract_id ?? null,
+    contract_id: input.contract?.contract_id ?? input.contract_id ?? null,
     payer_name: input.payer_name,
     procedure_code: input.procedure_code ?? null,
+    service_date: input.service_date ?? null,
     expected_amount_cents: underpayment.expected_cents,
     allowed_amount_cents: input.allowed_cents,
     paid_amount_cents: input.paid_cents,
@@ -40,5 +43,5 @@ export async function maybeGenerateDispute(input: DisputeGenInput): Promise<Unde
     severity: underpayment.severity,
     status: 'open',
     explanation: underpayment.explanation,
-  });
+  }, { auto: true });
 }

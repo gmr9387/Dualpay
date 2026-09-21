@@ -515,8 +515,12 @@ export type Database = {
           error_id: string
           message: string
           org_id: string
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
           segment_id: string | null
           severity: string
+          status: string
           transaction_id: string
         }
         Insert: {
@@ -525,8 +529,12 @@ export type Database = {
           error_id?: string
           message: string
           org_id: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
           segment_id?: string | null
           severity?: string
+          status?: string
           transaction_id: string
         }
         Update: {
@@ -535,8 +543,12 @@ export type Database = {
           error_id?: string
           message?: string
           org_id?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
           segment_id?: string | null
           severity?: string
+          status?: string
           transaction_id?: string
         }
         Relationships: [
@@ -1289,16 +1301,19 @@ export type Database = {
           created_at: string
           name: string
           org_id: string
+          recovery_fee_percent_bps: number
         }
         Insert: {
           created_at?: string
           name: string
           org_id?: string
+          recovery_fee_percent_bps?: number
         }
         Update: {
           created_at?: string
           name?: string
           org_id?: string
+          recovery_fee_percent_bps?: number
         }
         Relationships: []
       }
@@ -1344,6 +1359,75 @@ export type Database = {
           uploaded_at?: string
           uploaded_by?: string | null
           version?: string
+        }
+        Relationships: []
+      }
+      plan_benefits: {
+        Row: {
+          cob_policy: string
+          coinsurance_rate: number
+          copay_amount: number | null
+          covered_services: Json
+          created_at: string
+          deductible_family: number
+          deductible_individual: number
+          effective_date: string
+          oop_max_family: number
+          oop_max_individual: number
+          org_id: string
+          payer_name: string
+          plan_id: string
+          plan_name: string
+          plan_version: string
+          plan_year: number
+          termination_date: string | null
+          updated_at: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          cob_policy?: string
+          coinsurance_rate?: number
+          copay_amount?: number | null
+          covered_services?: Json
+          created_at?: string
+          deductible_family?: number
+          deductible_individual?: number
+          effective_date: string
+          oop_max_family?: number
+          oop_max_individual?: number
+          org_id: string
+          payer_name: string
+          plan_id?: string
+          plan_name: string
+          plan_version?: string
+          plan_year: number
+          termination_date?: string | null
+          updated_at?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          cob_policy?: string
+          coinsurance_rate?: number
+          copay_amount?: number | null
+          covered_services?: Json
+          created_at?: string
+          deductible_family?: number
+          deductible_individual?: number
+          effective_date?: string
+          oop_max_family?: number
+          oop_max_individual?: number
+          org_id?: string
+          payer_name?: string
+          plan_id?: string
+          plan_name?: string
+          plan_version?: string
+          plan_year?: number
+          termination_date?: string | null
+          updated_at?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
         }
         Relationships: []
       }
@@ -1789,18 +1873,25 @@ export type Database = {
       underpayment_disputes: {
         Row: {
           allowed_amount_cents: number
+          assessed_fee_cents: number
           claim_id: string
+          client_response: string | null
+          client_response_at: string | null
+          client_response_notes: string | null
           contract_id: string | null
           created_at: string
           dedupe_key: string | null
           dispute_id: string
           expected_amount_cents: number
           explanation: string | null
+          fee_percent_bps: number
           org_id: string
           paid_amount_cents: number
           payer_name: string
           procedure_code: string | null
           remittance_line_id: string | null
+          report_generated_at: string | null
+          report_sent_at: string | null
           service_date: string | null
           severity: string
           source_metadata: Json | null
@@ -1811,18 +1902,25 @@ export type Database = {
         }
         Insert: {
           allowed_amount_cents?: number
+          assessed_fee_cents?: number
           claim_id: string
+          client_response?: string | null
+          client_response_at?: string | null
+          client_response_notes?: string | null
           contract_id?: string | null
           created_at?: string
           dedupe_key?: string | null
           dispute_id?: string
           expected_amount_cents?: number
           explanation?: string | null
+          fee_percent_bps?: number
           org_id: string
           paid_amount_cents?: number
           payer_name: string
           procedure_code?: string | null
           remittance_line_id?: string | null
+          report_generated_at?: string | null
+          report_sent_at?: string | null
           service_date?: string | null
           severity?: string
           source_metadata?: Json | null
@@ -1833,18 +1931,25 @@ export type Database = {
         }
         Update: {
           allowed_amount_cents?: number
+          assessed_fee_cents?: number
           claim_id?: string
+          client_response?: string | null
+          client_response_at?: string | null
+          client_response_notes?: string | null
           contract_id?: string | null
           created_at?: string
           dedupe_key?: string | null
           dispute_id?: string
           expected_amount_cents?: number
           explanation?: string | null
+          fee_percent_bps?: number
           org_id?: string
           paid_amount_cents?: number
           payer_name?: string
           procedure_code?: string | null
           remittance_line_id?: string | null
+          report_generated_at?: string | null
+          report_sent_at?: string | null
           service_date?: string | null
           severity?: string
           source_metadata?: Json | null

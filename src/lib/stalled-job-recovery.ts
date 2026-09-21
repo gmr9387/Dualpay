@@ -5,11 +5,10 @@
  * the UI request an immediate recovery sweep for admins / managers via the
  * security-definer SQL function.
  */
-import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { appendOpsEvent } from '@/lib/ops-events';
 
-const sb = supabase as ReturnType<typeof createClient>;
+const sb = supabase;
 
 export async function recoverStalledJobs(staleMinutes = 10): Promise<number> {
   const { data, error } = await sb.rpc('recover_stalled_queue_jobs', { _stale_minutes: staleMinutes });

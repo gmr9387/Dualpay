@@ -2,12 +2,13 @@
  * Phase 9 — Import Exceptions persistence + correction/retry workflow.
  * Reuses validateRows (no duplicate validation engine) + rowToClaim.
  */
-import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { appendOpsEvent } from '@/lib/ops-events';
 import { saveClaim } from '@/data/repository';
 import { validateRows } from '@/engine/import-validation';
 import { rowToClaim } from '@/engine/import-to-claim';
+import { withTriggerOrgId } from '@/lib/supabase-helpers';
+import type { Database, Json } from '@/integrations/supabase/types';
 import type { ImportException, ExceptionStatus, ExceptionSeverity } from '@/types/exceptions';
 import type {
 
@@ -18,26 +19,25 @@ import type {
   ParsedRow,
   RowIssue,
 } from '@/types/import';
-const sb = supabase as ReturnType<typeof createClient>;
+const sb = supabase;
 
-type Json = unknown;
 const J = <T,>(v: T) => v as unknown as Json;
 
 export const EXCEPTION_EVENT = 'clarity-import-exceptions';
 const emit = () => window.dispatchEvent(new Event(EXCEPTION_EVENT));
 
-function fromRow(r: Record<string, unknown>): ImportException {
+function fromRow(r: Database['public']['Tables']['import_exceptions']['Row']): ImportException {
   return {
     exception_id: r.exception_id,
     batch_id: r.batch_id,
     row_number: r.row_number,
     source_row: (r.source_row ?? {}) as Record<string, string>,
     mapped_row: (r.mapped_row ?? null) as ImportException['mapped_row'],
-    severity: r.severity,
-    status: r.status,
+    severity: r.severity as ExceptionSeverity,
+    status: r.status as ExceptionStatus,
     error_count: r.error_count ?? 0,
     warning_count: r.warning_count ?? 0,
-    validation_errors: (r.validation_errors ?? []) as RowIssue[],
+    validation_errors: (r.validation_errors ?? []) as unknown as RowIssue[],
     generated_claim_id: r.generated_claim_id ?? null,
     created_at: r.created_at,
     updated_at: r.updated_at,
@@ -74,7 +74,7 @@ export async function persistExceptions(batch: ImportBatch, rows: ParsedRow[]): 
 
   const { error } = await sb
     .from('import_exceptions')
-    .upsert(payload, { onConflict: 'exception_id' });
+    .upsert(withTriggerOrgId(payload), { onConflict: 'exception_id' });
   if (error) throw error;
 
   await appendOpsEvent({

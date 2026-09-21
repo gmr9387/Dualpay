@@ -10,13 +10,16 @@ import { adjudicateViaNucleus } from '@/engine/nucleus-adjudication-client';
 import { demoContract, demoPlan, demoPriorOutcomes } from '@/data/demo-scenarios';
 import { isDemoModeEnabled } from '@/lib/demo-flag';
 import { LIVE_CONTRACT, LIVE_PLAN } from '@/lib/live-stubs';
+import { loadLiveContract } from '@/lib/contracts';
+import { loadLivePlan } from '@/lib/plan-benefits';
+import type { ContractTerms, PlanBenefits } from '@/types/claim';
 import {
   loadClaims, loadCases, loadCaseEvents, loadAccumulators, loadLatestRuns,
   saveAdjudication, saveClaim, seedIfEmpty,
 } from '@/data/repository';
 import type { Claim, AdjudicationRun, MemberAccumulators } from '@/types/claim';
 import type { TraceObject } from '@/types/trace';
-import type { Case, CaseEvent } from '@/types/case';
+import type { Case, CaseEvent, CaseStatus } from '@/types/case';
 import { ClaimList } from '@/components/admin/ClaimList';
 import { ClaimOperationsKpis } from '@/components/admin/ClaimOperationsKpis';
 import { ClaimWorkspace } from '@/components/admin/ClaimWorkspace';
@@ -86,6 +89,8 @@ export default function ClaimsWorkbench() {
   const [caseEvents, setCaseEvents] = useState<CaseEvent[]>([]);
   const [accumulators, setAccumulators] = useState<Record<string, MemberAccumulators>>({});
   const [adjResults, setAdjResults] = useState<AdjResult[]>([]);
+  const [liveContract, setLiveContract] = useState<ContractTerms | null>(null);
+  const [livePlan, setLivePlan] = useState<PlanBenefits | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -104,7 +109,21 @@ export default function ClaimsWorkbench() {
           if (haveRun.has(claim.claim_id)) continue;
           const acc = a[claim.member_id] ?? Object.values(a)[0];
           if (!acc) continue;
-          if (!isDemoModeEnabled()) continue;
+
+          // Outside demo mode, only adjudicate against real, admin-entered
+          // contract + plan data. Never guess with a partial or zeroed
+          // picture — a claim for a payer with no contract and/or plan on
+          // file yet is left un-adjudicated rather than priced wrong.
+          let contract = demoContract;
+          let plan = demoPlan;
+          let priorOutcomes = demoPriorOutcomes;
+          if (!isDemoModeEnabled()) {
+            const payerName = claim.intel?.payer_name;
+            if (!payerName) continue;
+            const [liveC, liveP] = await Promise.all([loadLiveContract(payerName), loadLivePlan(payerName)]);
+            if (!liveC || !liveP) continue;
+            contract = liveC; plan = liveP; priorOutcomes = [];
+          }
 
           const gate = await checkNucleusGate(claim);
           if (gate.blocked) {
@@ -118,9 +137,9 @@ export default function ClaimsWorkbench() {
           const { run, trace } = await executeAdjudicationWithReplay({
             claim,
             accumulators: acc,
-            contract: demoContract,
-            plan: demoPlan,
-            priorOutcomes: demoPriorOutcomes,
+            contract,
+            plan,
+            priorOutcomes,
             actor: 'ClaimsWorkbench',
           });
           fresh.push({ claimId: claim.claim_id, run, trace });
@@ -145,6 +164,29 @@ export default function ClaimsWorkbench() {
   }, [selectedClaim, cases]);
   const selectedCaseEvents = selectedCase ? caseEvents.filter(e => e.case_id === selectedCase.case_id) : [];
 
+  const handleCaseEvent = (event: CaseEvent, newStatus?: CaseStatus) => {
+    setCaseEvents(prev => [...prev, event]);
+    if (newStatus) {
+      setCases(prev => prev.map(c => (c.case_id === event.case_id ? { ...c, status: newStatus } : c)));
+    }
+  };
+
+  // Foundation fix: outside demo mode, resolve the real on-file payer
+  // contract + plan instead of showing the always-empty LIVE_CONTRACT/
+  // LIVE_PLAN stubs.
+  useEffect(() => {
+    if (isDemoModeEnabled()) { setLiveContract(null); setLivePlan(null); return; }
+    const payerName = selectedClaim?.intel?.payer_name;
+    if (!payerName) { setLiveContract(null); setLivePlan(null); return; }
+    let cancelled = false;
+    Promise.all([loadLiveContract(payerName), loadLivePlan(payerName)]).then(([c, p]) => {
+      if (cancelled) return;
+      setLiveContract(c);
+      setLivePlan(p);
+    });
+    return () => { cancelled = true; };
+  }, [selectedClaim?.claim_id, selectedClaim?.intel?.payer_name]);
+
   return (
     <div className="flex flex-col h-full">
       <PageHeader
@@ -168,10 +210,11 @@ export default function ClaimsWorkbench() {
                 claim={selectedClaim} result={selectedResult}
                 caseData={selectedCase} caseEvents={selectedCaseEvents}
                 claims={claims} adjResults={adjResults} accumulators={accumulators}
-                contract={isDemoModeEnabled() ? demoContract : LIVE_CONTRACT}
-                plan={isDemoModeEnabled() ? demoPlan : LIVE_PLAN}
+                contract={isDemoModeEnabled() ? demoContract : (liveContract ?? LIVE_CONTRACT)}
+                plan={isDemoModeEnabled() ? demoPlan : (livePlan ?? LIVE_PLAN)}
                 priorOutcomes={isDemoModeEnabled() ? demoPriorOutcomes : []}
                 onSelectClaim={setSelectedClaimId}
+                onCaseEvent={handleCaseEvent}
               />
             ) : (
               <EmptyState

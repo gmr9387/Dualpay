@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from './use-org';
 
@@ -59,9 +58,7 @@ export function canTransitionTo(from: AppealRecoveryState, to: AppealRecoverySta
   return TRANSITIONS[from]?.includes(to) ?? false;
 }
 
-// Table not yet in generated Database types; cast client to bypass type check.
-// Remove once `src/integrations/supabase/types.ts` is regenerated with appeal_recovery_cases.
-const db = supabase as ReturnType<typeof createClient>;
+const db = supabase;
 
 export function useAppealRecoveryCases() {
   const { currentOrg } = useOrg();

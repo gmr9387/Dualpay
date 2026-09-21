@@ -53,7 +53,15 @@ export type OpsEventKind =
   | 'edi_validated'
   | 'edi_rejected'
   | 'edi_normalized'
-  | 'edi_imported';
+  | 'edi_imported'
+  | 'edi_error_resolved'
+  | 'fee_assessed'
+  | 'plan_benefits_updated'
+  | 'case_status_changed'
+  | 'case_note_added'
+  | 'recovery_report_generated'
+  | 'recovery_report_sent'
+  | 'client_response_recorded';
 
 export interface OpsEvent {
   event_id: string;
