@@ -196,6 +196,8 @@ outcomes
 
 reporting
 
+Denial → Appeal → Outcome is a single closed loop: a denial is detected on import (deterministic CARC/RARC scoring, persisted to the claim) → an appeal packet is generated and, on submission, drives a real `appeal_recovery_cases` state machine (denied → appeal filed → submitted) → Guided Recovery tracks the payer's response and either a real recovery (written atomically to `recovery_outcomes`, the same table Executive/Outcome Log read) or a real write-off, both with a captured reason/amount rather than the case going stale. Denial and Appeal Packet pages link directly into the recovery case so the loop doesn't require separately discovering a different page.
+
 Automation
 DualPay includes:
 
@@ -405,6 +407,7 @@ Capability	Status
 Adjudication	Implemented
 COB	Implemented
 Denial detection	Implemented
+Denial → Appeal → Outcome loop	Implemented (real appeal_recovery_cases state machine, linked from denial/packet, outcomes written atomically)
 Contract recovery	Implemented (automatic sweep on import, fee assessment, client report + response)
 Plan benefits	Implemented
 Durable jobs	Implemented
