@@ -368,6 +368,9 @@ Important workflows run through durable background execution.
 Replay and Idempotency
 Replay records and deduplication keys prevent duplicate operations.
 
+Type Safety
+`tsc -p tsconfig.app.json` (the config that actually resolves this repo's files — the bare `tsconfig.json` is a solution-style file with no `include`/`files` and checks nothing under `--noEmit`) reports zero errors. Supabase calls use the real generated `Database` type directly; trigger-populated columns (`org_id` set by a `BEFORE INSERT` trigger, never client-supplied) are made explicit via `src/lib/supabase-helpers.ts`'s `withTriggerOrgId()` rather than a blanket type-erasing cast.
+
 Engineering Incidents
 DualPay produced several useful corrections:
 
@@ -380,6 +383,8 @@ scheduler failure handling improved
 storage isolation tested
 
 X12 validation hardened
+
+a repo-wide Supabase client type-erasure cast was found and removed (see Type Safety below); it had been hiding several real bugs, including a case-creation insert that was missing a required primary key
 
 Validation
 Validation includes:
@@ -414,6 +419,7 @@ Durable jobs	Implemented
 Scheduler	Implemented
 Replay	Implemented
 Idempotency	Partial
+Type safety (tsc, full repo)	Implemented (0 errors)
 X12 835	Implemented
 X12 837P	Implemented
 X12 837I	Implemented
