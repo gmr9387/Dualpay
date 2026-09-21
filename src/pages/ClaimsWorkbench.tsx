@@ -19,7 +19,7 @@ import {
 } from '@/data/repository';
 import type { Claim, AdjudicationRun, MemberAccumulators } from '@/types/claim';
 import type { TraceObject } from '@/types/trace';
-import type { Case, CaseEvent } from '@/types/case';
+import type { Case, CaseEvent, CaseStatus } from '@/types/case';
 import { ClaimList } from '@/components/admin/ClaimList';
 import { ClaimOperationsKpis } from '@/components/admin/ClaimOperationsKpis';
 import { ClaimWorkspace } from '@/components/admin/ClaimWorkspace';
@@ -164,6 +164,13 @@ export default function ClaimsWorkbench() {
   }, [selectedClaim, cases]);
   const selectedCaseEvents = selectedCase ? caseEvents.filter(e => e.case_id === selectedCase.case_id) : [];
 
+  const handleCaseEvent = (event: CaseEvent, newStatus?: CaseStatus) => {
+    setCaseEvents(prev => [...prev, event]);
+    if (newStatus) {
+      setCases(prev => prev.map(c => (c.case_id === event.case_id ? { ...c, status: newStatus } : c)));
+    }
+  };
+
   // Foundation fix: outside demo mode, resolve the real on-file payer
   // contract + plan instead of showing the always-empty LIVE_CONTRACT/
   // LIVE_PLAN stubs.
@@ -207,6 +214,7 @@ export default function ClaimsWorkbench() {
                 plan={isDemoModeEnabled() ? demoPlan : (livePlan ?? LIVE_PLAN)}
                 priorOutcomes={isDemoModeEnabled() ? demoPriorOutcomes : []}
                 onSelectClaim={setSelectedClaimId}
+                onCaseEvent={handleCaseEvent}
               />
             ) : (
               <EmptyState

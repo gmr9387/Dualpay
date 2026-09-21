@@ -198,6 +198,8 @@ reporting
 
 Denial → Appeal → Outcome is a single closed loop: a denial is detected on import (deterministic CARC/RARC scoring, persisted to the claim) → an appeal packet is generated and, on submission, drives a real `appeal_recovery_cases` state machine (denied → appeal filed → submitted) → Guided Recovery tracks the payer's response and either a real recovery (written atomically to `recovery_outcomes`, the same table Executive/Outcome Log read) or a real write-off, both with a captured reason/amount rather than the case going stale. Denial and Appeal Packet pages link directly into the recovery case so the loop doesn't require separately discovering a different page.
 
+Case Management is a closed loop: `autoCreateCase` opens a real `cases` row (with an initial `CASE_CREATED` event) when automation detects a high-severity denial, a major underpayment, or a repeat payer issue. From the Claims Workbench case tab, staff can now move a case through its real lifecycle (`OPEN → IN_REVIEW → PENDING_RETRO/RESOLVED → CLOSED`, with reopen) and add timestamped notes — both write real `case_events` rows (`STATUS_CHANGED`, `NOTE_ADDED`) alongside the retro-recalculation and accumulator-impact views that already existed, so a case that gets auto-created has a real path to resolution instead of sitting untouched.
+
 Automation
 DualPay includes:
 
@@ -413,6 +415,7 @@ Adjudication	Implemented
 COB	Implemented
 Denial detection	Implemented
 Denial → Appeal → Outcome loop	Implemented (real appeal_recovery_cases state machine, linked from denial/packet, outcomes written atomically)
+Case management loop	Implemented (auto-created on trigger, real status transitions + notes from Claims Workbench)
 Contract recovery	Implemented (automatic sweep on import, fee assessment, client report + response)
 Plan benefits	Implemented
 Durable jobs	Implemented

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Claim, AdjudicationRun } from '@/types/claim';
 import type { TraceObject } from '@/types/trace';
-import type { Case, CaseEvent } from '@/types/case';
+import type { Case, CaseEvent, CaseStatus } from '@/types/case';
 import type { MemberAccumulators, ContractTerms, PlanBenefits, PriorPayerOutcome } from '@/types/claim';
 import { AdjudicationPanel } from './AdjudicationPanel';
 import { TraceViewer } from './TraceViewer';
@@ -31,6 +31,7 @@ interface ClaimWorkspaceProps {
   plan: PlanBenefits;
   priorOutcomes: PriorPayerOutcome[];
   onSelectClaim: (id: string) => void;
+  onCaseEvent: (event: CaseEvent, newStatus?: CaseStatus) => void;
 }
 
 type TabId = 'summary' | 'lines' | 'cob' | 'trace' | 'state' | 'case';
@@ -40,7 +41,7 @@ function formatCents(cents: number): string {
 }
 
 export function ClaimWorkspace(props: ClaimWorkspaceProps) {
-  const { claim, result, caseData, caseEvents, claims, adjResults, accumulators, contract, plan, priorOutcomes, onSelectClaim } = props;
+  const { claim, result, caseData, caseEvents, claims, adjResults, accumulators, contract, plan, priorOutcomes, onSelectClaim, onCaseEvent } = props;
   const [tab, setTab] = useState<TabId>('summary');
 
   const hasCOB = result.run.line_results.some(lr => lr.cob_allocations.length > 0);
@@ -171,6 +172,7 @@ export function ClaimWorkspace(props: ClaimWorkspaceProps) {
               plan={plan}
               priorOutcomes={priorOutcomes}
               onSelectClaim={onSelectClaim}
+              onCaseEvent={onCaseEvent}
             />
           </div>
         )}
