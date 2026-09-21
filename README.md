@@ -170,6 +170,13 @@ percent of Medicare
 
 Underpayment disputes use deterministic deduplication keys.
 
+The full recovery workflow runs automatically on every 835 remittance import: match each line to the real, currently-effective fee schedule → readjudicate expected vs. paid → open a deduplicated dispute → assess a contingency fee only on an actual recovery (org-configurable, off by default) → generate a client-facing recovery report → track the client's response (pursue, decline, or handle internally).
+
+Plan Benefits
+Deductibles, out-of-pocket maximums, coinsurance, copay, COB policy, and covered services are versioned, org-scoped, admin-entered records per payer — the plan-side counterpart to payer contracts.
+
+Outside demo mode, the deterministic adjudication engine only runs for a claim once both a real contract and a real plan are on file for that claim's payer; a claim for a payer missing either is left un-adjudicated rather than priced against placeholder data.
+
 Recovery Operations
 DualPay supports:
 
@@ -308,6 +315,8 @@ evidence
 
 contracts
 
+plan benefits
+
 automation
 
 lineage
@@ -396,7 +405,8 @@ Capability	Status
 Adjudication	Implemented
 COB	Implemented
 Denial detection	Implemented
-Contract recovery	Implemented
+Contract recovery	Implemented (automatic sweep on import, fee assessment, client report + response)
+Plan benefits	Implemented
 Durable jobs	Implemented
 Scheduler	Implemented
 Replay	Implemented
