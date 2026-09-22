@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { PageHeader, Panel, ScrollBody } from '@/components/clarity/primitives';
 import { Upload, FileJson, FileText } from 'lucide-react';
 
@@ -13,9 +14,15 @@ export default function Ingestion() {
                 <Upload className="h-8 w-8 mx-auto mb-2 opacity-60" />
                 <div className="text-[13px] font-medium text-foreground">Drag &amp; drop ERA / EOB / Claim JSON here</div>
                 <div className="text-[11.5px] mt-1">Supports 835, 837P/I, custom denial files, payer portal exports</div>
-                <button className="mt-3 h-8 px-3 inline-flex items-center gap-1.5 text-[12px] rounded-md bg-primary text-primary-foreground hover:bg-primary/90" disabled>
-                  Browse files <span className="ml-1 text-[10px] font-mono opacity-70">(scaffold)</span>
-                </button>
+                <Link
+                  to="/edi/import"
+                  className="mt-3 h-8 px-3 inline-flex items-center gap-1.5 text-[12px] rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  Go to EDI Import
+                </Link>
+                <div className="text-[11px] mt-1.5 text-muted-foreground">
+                  Real 835/837 upload, parsing, and claim import lives on the EDI Import page.
+                </div>
               </div>
             </Panel>
 
