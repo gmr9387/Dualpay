@@ -177,6 +177,8 @@ Deductibles, out-of-pocket maximums, coinsurance, copay, COB policy, and covered
 
 Outside demo mode, the deterministic adjudication engine only runs for a claim once both a real contract and a real plan are on file for that claim's payer; a claim for a payer missing either is left un-adjudicated rather than priced against placeholder data.
 
+The compute step of that engine now runs remotely: `adjudication-orchestrator.ts` calls valtaris-nucleus's real `adjudicate-claim` Edge Function (in its "resolved" request mode) instead of this repo's own `calculation-engine.ts`, sending the contract/plan/accumulators/claim lines this repo already resolved and getting back the full computed run and trace. Nucleus's kernel is a verified byte-for-byte port of `calculation-engine.ts`/`cob-rules.ts`, so the math is identical; what moves is where it runs. This repo's own fingerprint-based replay store remains the primary idempotency guard, unchanged; nucleus's own idempotency cache, keyed by that same fingerprint, is an additional defense-in-depth layer. `calculation-engine.ts`/`cob-rules.ts` are deliberately left in place, not deleted — they remain real, tested code that documents the exact math nucleus now runs, and tests reference them directly. This cutover carries no live production traffic yet: it depends on an `NUCLEUS_API_KEY` Edge Function secret that hasn't been issued and configured (see valtaris-nucleus's README §3.10) — until then, the `nucleus-adjudicate` proxy this calls through returns a clear "not configured" response rather than silently falling back to anything.
+
 Recovery Operations
 DualPay supports:
 
