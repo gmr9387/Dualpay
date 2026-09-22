@@ -2,11 +2,13 @@
  * Phase 21 — EDI Import (raw 835/837 upload)
  */
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, FileCheck, AlertOctagon } from 'lucide-react';
+import { Upload, FileCheck, AlertOctagon, FileInput } from 'lucide-react';
 import { ingestEdiFile, isLikelyX12, type EdiIngestResult } from '@/lib/edi-gateway';
+import { importClaims837, type ClaimIntakeResult } from '@/engine/claim-intake';
 import { toast } from 'sonner';
 
 export default function EdiImport() {
@@ -14,6 +16,8 @@ export default function EdiImport() {
   const [fileName, setFileName] = useState('pasted.edi');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<EdiIngestResult | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [intake, setIntake] = useState<ClaimIntakeResult | null>(null);
 
   async function handleFile(f: File) {
     const content = await f.text();
@@ -28,6 +32,7 @@ export default function EdiImport() {
       return;
     }
     setBusy(true);
+    setIntake(null);
     try {
       const r = await ingestEdiFile({ name: fileName, content: text });
       setResult(r);
@@ -35,6 +40,19 @@ export default function EdiImport() {
       else toast.error(`Rejected: ${r.error_count} validation error(s)`);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function importClaims() {
+    if (!result?.claims?.length) return;
+    setImporting(true);
+    try {
+      const r = await importClaims837(result.claims);
+      setIntake(r);
+      if (r.imported.length) toast.success(`Imported ${r.imported.length} claim(s) — visible in Claims Workbench`);
+      if (r.failed.length) toast.error(`${r.failed.length} claim(s) failed to import`);
+    } finally {
+      setImporting(false);
     }
   }
 
@@ -84,6 +102,28 @@ export default function EdiImport() {
             {result.remittances && <div>Normalized remittances: <span className="font-mono">{result.remittances.length}</span></div>}
             {result.claims && <div>Normalized claims: <span className="font-mono">{result.claims.length}</span></div>}
             {result.transaction_id && <div className="text-xs text-muted-foreground">Transaction ID: {result.transaction_id}</div>}
+
+            {result.valid && !!result.claims?.length && (
+              <div className="pt-3 border-t mt-3 space-y-2">
+                <Button onClick={importClaims} disabled={importing} variant="secondary" size="sm">
+                  <FileInput className="h-4 w-4 mr-1.5" />
+                  {importing ? 'Importing…' : `Import ${result.claims.length} claim(s)`}
+                </Button>
+                {intake && (
+                  <div className="text-xs space-y-1">
+                    {intake.imported.length > 0 && (
+                      <div className="text-emerald-600">
+                        Imported: {intake.imported.join(', ')} —{' '}
+                        <Link to="/claims" className="underline">open Claims Workbench</Link>
+                      </div>
+                    )}
+                    {intake.failed.map((f) => (
+                      <div key={f.claim_id} className="text-rose-600">{f.claim_id}: {f.error}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

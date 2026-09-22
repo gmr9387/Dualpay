@@ -35,9 +35,33 @@ function detectDelimiters(raw: string): {
   // The element separator is the 4th character after "ISA"
   // ISA*... — element separator is raw[isaIdx + 3]
   const element = raw[isaIdx + 3] ?? DEFAULT_ELEM_SEP;
-  // ISA is fixed-length 106 chars; sub-element sep at position 104, segment term at 105
-  const subElement = raw[isaIdx + 104] ?? DEFAULT_SUB_SEP;
-  let segment = raw[isaIdx + 105] ?? DEFAULT_SEG_TERM;
+
+  // ISA has exactly 16 elements (ISA01-ISA16). The spec pads ISA to a
+  // fixed 106-char record, but real-world senders don't always honor
+  // that padding (a sender/receiver ID longer than the nominal 15
+  // chars is common). Rather than assume byte offsets 104/105, count
+  // element-separator occurrences to find the boundary before ISA16
+  // -- ISA16 is always exactly one character (the sub-element
+  // separator's own declared value), immediately followed by the
+  // segment terminator, regardless of how earlier fields are padded.
+  let sepPos = isaIdx + 3;
+  let count = 1;
+  for (let i = sepPos + 1; i < raw.length && count < 16; i++) {
+    if (raw[i] === element) {
+      count += 1;
+      sepPos = i;
+    }
+  }
+  if (count < 16) {
+    // Malformed/truncated ISA -- fall back to the old fixed-offset
+    // guess rather than indexing past the string.
+    const subElement = raw[isaIdx + 104] ?? DEFAULT_SUB_SEP;
+    let segment = raw[isaIdx + 105] ?? DEFAULT_SEG_TERM;
+    if (segment === '\n' || segment === '\r') segment = DEFAULT_SEG_TERM;
+    return { element, segment, subElement };
+  }
+  const subElement = raw[sepPos + 1] ?? DEFAULT_SUB_SEP;
+  let segment = raw[sepPos + 2] ?? DEFAULT_SEG_TERM;
   if (segment === '\n' || segment === '\r') segment = DEFAULT_SEG_TERM;
   return { element, segment, subElement };
 }

@@ -14,6 +14,15 @@
 import type { ParsedX12, EdiSegment } from '@/types/edi';
 import type { CanonicalRemittance } from '@/types/import';
 
+export interface CanonicalClaimLine837 {
+  line_number: number;
+  procedure_code: string;
+  billed_cents: number;
+  units: number;
+  service_date?: string;
+  diagnosis_codes: string[];
+}
+
 export interface CanonicalClaim837 {
   claim_id: string;
   payer_name: string;
@@ -23,6 +32,10 @@ export interface CanonicalClaim837 {
   service_date?: string;
   billed_cents: number;
   procedure_codes: string[];
+  /** Per-line detail (billed amount, units, diagnosis pointers) --
+   * `procedure_codes`/`billed_cents` above stay claim-level aggregates
+   * for existing callers; real adjudication needs this. */
+  lines: CanonicalClaimLine837[];
   facility_type?: string;
   form_type: '837P' | '837I';
 }
@@ -196,6 +209,9 @@ export function normalize837(parsed: ParsedX12): CanonicalClaim837[] {
 
   let current: Partial<CanonicalClaim837> | null = null;
   let procs: string[] = [];
+  let lines: CanonicalClaimLine837[] = [];
+  let lastLine: CanonicalClaimLine837 | null = null;
+  let claimDiagnoses: string[] = [];
 
   const push = () => {
     if (current && current.claim_id) {
@@ -208,12 +224,16 @@ export function normalize837(parsed: ParsedX12): CanonicalClaim837[] {
         service_date: current.service_date,
         billed_cents: current.billed_cents ?? 0,
         procedure_codes: procs.slice(),
+        lines: lines.slice(),
         facility_type: current.facility_type,
         form_type: form,
       });
     }
     current = null;
     procs = [];
+    lines = [];
+    lastLine = null;
+    claimDiagnoses = [];
   };
 
   for (const s of segs) {
@@ -240,25 +260,66 @@ export function normalize837(parsed: ParsedX12): CanonicalClaim837[] {
         };
         break;
       }
+      case 'HI': {
+        if (!current) break;
+        // HI*ABK:M5450*ABF:...~ — each element is qualifier:code; the
+        // diagnosis codes themselves (the pointer target for SV107).
+        for (let i = 1; i <= 12; i++) {
+          const el = s.parsed_json[`HI${String(i).padStart(2, '0')}`];
+          if (!el) continue;
+          const code = el.split(':')[1];
+          if (code) claimDiagnoses.push(code);
+        }
+        break;
+      }
       case 'SV1': // Professional
       case 'SV2': // Institutional
       case 'SV3': {
         if (!current) break;
         const composite = s.parsed_json[`${s.segment_type}01`] ?? '';
-        // SV1*HC:99213*100*UN*1
+        // SV1*HC:99213*200.00*UN*1***1 — HC:code, charge, unit basis,
+        // units, (blank), (blank), diagnosis pointer(s).
         const parts = composite.split(':');
-        if (parts[1]) procs.push(parts[1]);
-        const amt = s.parsed_json[`${s.segment_type}02`];
-        if (amt && (!current.billed_cents || current.billed_cents === 0)) {
-          current.billed_cents = (current.billed_cents ?? 0) + money(amt);
+        const code = parts[1];
+        if (code) procs.push(code);
+        const lineBilled = money(s.parsed_json[`${s.segment_type}02`]);
+        // billed_cents stays the claim-level total from CLM02 when
+        // present (matches prior behavior for existing callers);
+        // only backfill it from line sums if CLM02 was absent/zero.
+        if (!current.billed_cents) {
+          current.billed_cents = (current.billed_cents ?? 0) + lineBilled;
         }
+        const unitsRaw = s.parsed_json[`${s.segment_type}04`];
+        const units = unitsRaw ? parseFloat(unitsRaw) : 1;
+        const pointerField = s.parsed_json[`${s.segment_type}07`];
+        const pointers = pointerField ? pointerField.split(':').filter(Boolean) : [];
+        const diagnosis_codes = pointers.length
+          ? pointers
+              .map((p) => claimDiagnoses[parseInt(p, 10) - 1])
+              .filter((d): d is string => Boolean(d))
+          : claimDiagnoses.slice();
+        const line: CanonicalClaimLine837 = {
+          line_number: lines.length + 1,
+          procedure_code: code ?? '',
+          billed_cents: lineBilled,
+          units: Number.isFinite(units) && units > 0 ? units : 1,
+          diagnosis_codes,
+        };
+        lines.push(line);
+        lastLine = line;
         break;
       }
       case 'DTP': {
         if (!current) break;
         const qual = s.parsed_json.DTP01;
         if (qual === '472' || qual === '434') {
-          current.service_date = dateFrom(s.parsed_json.DTP03);
+          const date = dateFrom(s.parsed_json.DTP03);
+          // A 472 (service date) appearing after a line's SV1 belongs
+          // to that line; a 434 (statement date range) is claim-level.
+          if (qual === '472' && lastLine && !lastLine.service_date) {
+            lastLine.service_date = date;
+          }
+          current.service_date = current.service_date ?? date;
         }
         break;
       }
