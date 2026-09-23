@@ -472,6 +472,9 @@ performance testing
 
 compliance posture
 
+Design Direction (noted for future UI/UX work)
+Target look and feel: dense, data-heavy enterprise ops software in the vein of Office Ally and RiskOnnect — information density over whitespace, since users live in tables/queues all day. Counter-note: Office Ally's actual visual execution reads dated (legacy clearinghouse chrome); the better target is that density paired with a modern visual layer — closer to how Candid Health, Akasa, or Adonis (modern RCM/healthcare-billing tools) or Linear/Retool (dense-but-crisp dashboard UI) execute the same density without looking legacy. DualPay's current shell (dark theme, compact font-mono rows, sidebar sections) is already closer to this modern-dense lane than to Office Ally's literal look, so treat this as refinement direction, not a rebuild.
+
 production deployment
 
 Technology Stack
