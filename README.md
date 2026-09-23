@@ -352,6 +352,8 @@ append-only operational events
 
 private storage buckets
 
+A Supabase security-advisor audit of the shared `valtaris-nucleus-2` project pinned an explicit `search_path` on `dualpay.touch_claim_assignments_updated_at` (a mutable `search_path` on a `SECURITY DEFINER`-adjacent trigger function is a real, if narrow, SQL-injection-adjacent risk). The audit's larger findings — 4 functions locked down from public REST access — were all in nucleus's own schema, not DualPay's; see valtaris-nucleus's README §3.12.
+
 DualPay is not represented as HIPAA certified or SOC 2 certified.
 
 Realtime Operations
