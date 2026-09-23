@@ -299,6 +299,8 @@ DualPay does not include trader intelligence.
 This section is intentionally omitted for DualPay.
 
 Data Architecture
+DualPay's tables live in a dedicated `dualpay` Postgres schema inside `valtaris-nucleus-2`, a Supabase project shared with valtaris-nucleus and valtaris-glue. Each app's data stays isolated in its own schema (`dualpay`, `glue`, and nucleus's own `public`), while all three share one `auth.users` table — a single Supabase Auth identity is the common identity layer across the whole ecosystem, replacing what used to be a standalone, DualPay-only Supabase project. RLS policies, RPC functions, and triggers were carried over unchanged during the move; the Supabase client is configured with `db.schema: 'dualpay'` so unqualified table references keep resolving inside DualPay's own schema.
+
 DualPay uses PostgreSQL for:
 
 claims
@@ -423,6 +425,7 @@ Case management loop	Implemented (auto-created on trigger, real status transitio
 EDI error resolution loop	Implemented (resolve/ignore with note, attributed + timestamped)
 Contract recovery	Implemented (automatic sweep on import, fee assessment, client report + response)
 Plan benefits	Implemented
+Shared Supabase project (`dualpay` schema in `valtaris-nucleus-2`, identity shared with nucleus + valtaris-glue)	Implemented
 Durable jobs	Implemented
 Scheduler	Implemented
 Replay	Implemented
@@ -512,6 +515,8 @@ DualPay requires:
 
 VITE_SUPABASE_URL
 VITE_SUPABASE_ANON_KEY
+
+These now point at the shared `valtaris-nucleus-2` project; the Supabase client additionally pins `db.schema` to `dualpay` so all queries resolve against DualPay's own schema rather than the project's `public` schema (used by nucleus) or `glue` (used by valtaris-glue).
 
 Server-side secrets must remain outside browser-exposed variables.
 
