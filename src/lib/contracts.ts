@@ -12,7 +12,7 @@ import type {
   PayerContract, FeeScheduleRow, UnderpaymentDispute,
 } from '@/types/contracts';
 
-type DisputeUpdate = Database['public']['Tables']['underpayment_disputes']['Update'];
+type DisputeUpdate = Database['dualpay']['Tables']['underpayment_disputes']['Update'];
 
 const sb = supabase;
 

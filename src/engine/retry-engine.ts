@@ -12,7 +12,7 @@ import type { Database } from '@/integrations/supabase/types';
 import type { QueueJob } from '@/types/platform';
 
 const sb = supabase;
-type JobQueueUpdate = Database['public']['Tables']['job_queue']['Update'];
+type JobQueueUpdate = Database['dualpay']['Tables']['job_queue']['Update'];
 const notify = () => window.dispatchEvent(new Event(QUEUE_EVENT));
 
 export interface RetryOptions {

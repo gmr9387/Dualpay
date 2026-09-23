@@ -13,5 +13,11 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
-  }
+  },
+  db: {
+    // DualPay's tables live in a dedicated `dualpay` schema in the shared
+    // Valtaris nucleus Supabase project (identity + auth are shared across
+    // apps; each app's data stays in its own schema).
+    schema: 'dualpay',
+  },
 });

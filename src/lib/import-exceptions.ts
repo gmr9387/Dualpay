@@ -26,7 +26,7 @@ const J = <T,>(v: T) => v as unknown as Json;
 export const EXCEPTION_EVENT = 'clarity-import-exceptions';
 const emit = () => window.dispatchEvent(new Event(EXCEPTION_EVENT));
 
-function fromRow(r: Database['public']['Tables']['import_exceptions']['Row']): ImportException {
+function fromRow(r: Database['dualpay']['Tables']['import_exceptions']['Row']): ImportException {
   return {
     exception_id: r.exception_id,
     batch_id: r.batch_id,

@@ -24,7 +24,7 @@ const sb = supabase;
 
 export const REMITTANCE_BATCH_EVENT = 'clarity-remittance-batches';
 
-function fromRow(r: Database['public']['Tables']['remittance_batches']['Row']): RemittanceBatchSummary {
+function fromRow(r: Database['dualpay']['Tables']['remittance_batches']['Row']): RemittanceBatchSummary {
   return {
     batch_id: r.batch_id,
     file_name: r.file_name,

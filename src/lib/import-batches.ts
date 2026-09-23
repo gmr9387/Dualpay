@@ -28,7 +28,7 @@ const J = <T>(v: T) => v as unknown as Json;
 
 const EVENT = 'clarity-import-batches';
 
-function fromRow(r: Database['public']['Tables']['import_batches']['Row']): ImportBatch {
+function fromRow(r: Database['dualpay']['Tables']['import_batches']['Row']): ImportBatch {
   return {
     batch_id: r.batch_id,
     file_name: r.file_name,
