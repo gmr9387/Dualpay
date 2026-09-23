@@ -6,6 +6,8 @@ DualPay Core Ledger is a reimbursement operations system designed to unify claim
 
 It is a portfolio engineering project and research implementation. It is not represented as HIPAA certified, SOC 2 certified, or commercially production deployed.
 
+**DualPay is the flagship product of the Valtaris portfolio.** Its adjudication compute now runs on `valtaris-nucleus`'s shared claims engine (see Data Architecture below and valtaris-nucleus's README §3.10), and its data lives in a Postgres schema shared with the rest of the ecosystem for a common identity layer. valtaris-nucleus and valtaris-glue are the supporting platform work behind it — nucleus is the backend DualPay's real adjudication path calls into; Glue is a separate, independently-real workflow-orchestration engine in the same portfolio, not (yet) wired into DualPay's own automation.
+
 Table of Contents
 Overview
 
