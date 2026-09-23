@@ -452,6 +452,17 @@ export async function seedIfEmpty(): Promise<{ seeded: boolean; org_id?: string 
       .single();
     if (createError) throw createError;
     demoOrgId = newOrg.org_id;
+
+    // Bootstrap the seeding user into the org they just created — without
+    // this, the claims/cases inserts below fail RLS (claims_insert requires
+    // org membership) for anyone whose very first org is the demo org.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { error: memberError } = await supabase
+        .from('organization_members')
+        .insert({ org_id: demoOrgId, user_id: user.id, role: 'owner' });
+      if (memberError) throw memberError;
+    }
   }
 
   // 2. Wipe legacy DualPay demo claims so the Clarity dataset is the source of truth.

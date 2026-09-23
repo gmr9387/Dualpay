@@ -417,6 +417,8 @@ RLS tests
 
 X12 tests
 
+browser E2E tests (Playwright) — real navigation smoke across the core business-loop pages (Command Center, Claims Workbench, Denial Command, Appeals Workbench, Outcome Log, Contract Recovery, Plan Benefits) plus deeper interaction tests for opening a seeded claim in the Claims Workbench and following a denial into its detail page; signs in via the same VITE_DEV_AUTO_LOGIN_* mechanism used for local UI preview against a real seeded org (VITE_DEMO_MODE=true), not mocked. Run with `npm run test:e2e` (see `playwright.config.ts` / `e2e/`). Not yet run to a green result in this development sandbox — this environment's egress policy blocks direct browser access to the project's own Supabase host, the same constraint valtaris-nucleus's README (§10, Status) notes for its own admin UI's authenticated routes — so the suite is verified up to that network boundary (harness boots, signs in, redirects correctly on no session) and needs to be run somewhere with real network access to `*.supabase.co` (a real dev machine or CI) for a live result.
+
 Current Capability Status
 Capability	Status
 Adjudication	Implemented
@@ -436,6 +438,7 @@ Type safety (tsc, full repo)	Implemented (0 errors)
 X12 835	Implemented
 X12 837P	Implemented
 X12 837I	Implemented
+Browser E2E suite (Playwright, core business-loop pages)	Written, harness-verified, not yet run to a green result (sandbox network policy blocks live Supabase access — see Validation above)
 Storage isolation	Validation pending
 RLS	Validation pending
 RBAC	Validation pending
@@ -483,6 +486,7 @@ PostgreSQL
 Edge Functions
 Vitest
 pgTAP
+Playwright
 
 Project Structure
 text
@@ -502,6 +506,7 @@ dualpay-core-ledger/
 │   ├── migrations/
 │   └── functions/
 │
+├── e2e/                    # Playwright E2E specs (npm run test:e2e)
 ├── docs/
 ├── public/
 └── README.md
