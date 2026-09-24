@@ -9,7 +9,7 @@ import { appendLineageEvent } from '@/lib/lineage';
 import { withTriggerOrgId } from '@/lib/supabase-helpers';
 import type { Database } from '@/integrations/supabase/types';
 import type {
-  PayerContract, FeeScheduleRow, UnderpaymentDispute,
+  PayerContract, FeeScheduleRow, UnderpaymentDispute, DisputeDirection,
 } from '@/types/contracts';
 
 type DisputeUpdate = Database['dualpay']['Tables']['underpayment_disputes']['Update'];
@@ -130,9 +130,10 @@ export async function addFeeScheduleRows(
 
 // ---------- Disputes ----------
 
-export async function listDisputes(): Promise<UnderpaymentDispute[]> {
-  const { data, error } = await sb.from('underpayment_disputes').select('*')
-    .order('created_at', { ascending: false });
+export async function listDisputes(direction?: DisputeDirection): Promise<UnderpaymentDispute[]> {
+  let query = sb.from('underpayment_disputes').select('*');
+  if (direction) query = query.eq('direction', direction);
+  const { data, error } = await query.order('created_at', { ascending: false });
   if (error) { console.error('[disputes] list failed', error.message); return []; }
   return (data ?? []) as UnderpaymentDispute[];
 }

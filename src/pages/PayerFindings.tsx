@@ -31,13 +31,14 @@ const SEVERITY_TONE: Record<string, string> = {
 };
 
 export default function PayerFindings() {
-  const { disputes, loading, reload } = useDisputes();
+  // Filtered server-side so the query hits (org_id, direction, created_at)
+  // instead of fetching the whole org's disputes table and filtering in JS.
+  const { disputes: findings, loading, reload } = useDisputes('overpayment');
   const { batches, loading: batchesLoading } = useRemittanceBatches();
   const { currentOrg } = useOrg();
   const canApprove = can.escalate(currentOrg?.role);
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  const findings = useMemo(() => disputes.filter(d => d.direction === 'overpayment'), [disputes]);
   const visible = useMemo(
     () => statusFilter === 'all' ? findings : findings.filter(d => d.status === statusFilter),
     [findings, statusFilter],
