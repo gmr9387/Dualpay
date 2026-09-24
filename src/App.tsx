@@ -8,6 +8,7 @@ import { AuthProvider } from "@/hooks/use-auth";
 import { OrgProvider } from "@/hooks/use-org";
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import Login from "./pages/Login";
+import Welcome from "./pages/Welcome";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -182,6 +183,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
+            <Route path="/welcome" element={<Welcome />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />

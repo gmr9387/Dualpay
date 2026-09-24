@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -80,6 +80,9 @@
 
     --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    /* Display face for titles/headlines only -- body copy and data stay
+       in Inter/mono so density-heavy screens don't lose legibility. */
+    --font-display: 'Bricolage Grotesque', 'Inter', system-ui, sans-serif;
   }
 }
 

@@ -13,7 +13,7 @@ export function PageHeader({
   return (
     <div className="px-6 py-4 border-b bg-card flex items-end justify-between gap-4">
       <div className="min-w-0">
-        <h1 className="text-[20px] font-semibold tracking-tight text-foreground leading-tight">{title}</h1>
+        <h1 className="font-display text-[20px] font-semibold tracking-tight text-foreground leading-tight">{title}</h1>
         {subtitle && <p className="text-[12.5px] text-muted-foreground mt-0.5">{subtitle}</p>}
       </div>
       {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
