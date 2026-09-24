@@ -1,7 +1,13 @@
 /**
  * Phase 15 — True Underpayment Engine.
  * Computes Expected Reimbursement from a matched contract/fee row, then compares to
- * the allowed and paid amounts on the remittance to surface a true underpayment.
+ * the allowed and paid amounts on the remittance to surface a true variance.
+ *
+ * Variance is direction-agnostic by construction: expected > actual is a
+ * provider underpayment (Recovery Ops' existing use), expected < actual is a
+ * payer overpayment (payment-integrity / "find lost money" use). Both read
+ * the same fee schedule match and the same computeExpected() — only the
+ * comparison direction differs.
  */
 import type { FeeScheduleRow } from '@/types/contracts';
 import type { DisputeSeverity } from '@/types/contracts';
@@ -14,12 +20,17 @@ export interface UnderpaymentInput {
   medicare_allowable_cents?: number;
 }
 
+export type VarianceDirection = 'underpayment' | 'overpayment' | 'none';
+
 export interface UnderpaymentResult {
   expected_cents: number;
   variance_cents: number;
   variance_percent: number;
   severity: DisputeSeverity;
+  /** @deprecated use `direction === 'underpayment'` */
   is_underpayment: boolean;
+  is_overpayment: boolean;
+  direction: VarianceDirection;
   confidence: number; // 0-100
   explanation: string;
 }
@@ -56,20 +67,28 @@ export function computeExpected(input: UnderpaymentInput): { expected: number; c
 export function detectUnderpayment(input: UnderpaymentInput): UnderpaymentResult {
   const { expected, confidence, basis } = computeExpected(input);
   const comparison = Math.max(input.allowed_cents, input.paid_cents);
-  const variance = expected - comparison;
+  const variance = expected - comparison; // positive = underpaid, negative = overpaid
   const variancePct = expected > 0 ? (variance / expected) * 100 : 0;
+  const absVariance = Math.abs(variance);
+  const absVariancePct = Math.abs(variancePct);
 
   const isUnder = expected > 0
     && variance > VARIANCE_THRESHOLD_CENTS
     && variancePct >= VARIANCE_THRESHOLD_PCT;
+  const isOver = expected > 0
+    && variance < -VARIANCE_THRESHOLD_CENTS
+    && variancePct <= -VARIANCE_THRESHOLD_PCT;
+  const direction: VarianceDirection = isUnder ? 'underpayment' : isOver ? 'overpayment' : 'none';
 
   let severity: DisputeSeverity = 'low';
-  if (variancePct >= 25 || variance >= 50_000) severity = 'critical';
-  else if (variancePct >= 15 || variance >= 20_000) severity = 'high';
-  else if (variancePct >= 5  || variance >= 5_000) severity = 'medium';
+  if (absVariancePct >= 25 || absVariance >= 50_000) severity = 'critical';
+  else if (absVariancePct >= 15 || absVariance >= 20_000) severity = 'high';
+  else if (absVariancePct >= 5  || absVariance >= 5_000) severity = 'medium';
 
   const explanation = isUnder
-    ? `Expected $${(expected/100).toFixed(2)} (${basis}); paid/allowed $${(comparison/100).toFixed(2)}. Variance $${(variance/100).toFixed(2)} (${variancePct.toFixed(1)}%).`
+    ? `Expected $${(expected/100).toFixed(2)} (${basis}); paid/allowed $${(comparison/100).toFixed(2)}. Underpaid $${(absVariance/100).toFixed(2)} (${absVariancePct.toFixed(1)}%).`
+    : isOver
+    ? `Expected $${(expected/100).toFixed(2)} (${basis}); paid/allowed $${(comparison/100).toFixed(2)}. Overpaid $${(absVariance/100).toFixed(2)} (${absVariancePct.toFixed(1)}%).`
     : `Within tolerance. ${basis}. Expected $${(expected/100).toFixed(2)}, paid/allowed $${(comparison/100).toFixed(2)}.`;
 
   return {
@@ -78,6 +97,8 @@ export function detectUnderpayment(input: UnderpaymentInput): UnderpaymentResult
     variance_percent: variancePct,
     severity,
     is_underpayment: isUnder,
+    is_overpayment: isOver,
+    direction,
     confidence,
     explanation,
   };

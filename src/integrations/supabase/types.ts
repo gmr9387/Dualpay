@@ -1301,18 +1301,21 @@ export type Database = {
           created_at: string
           name: string
           org_id: string
+          org_type: string
           recovery_fee_percent_bps: number
         }
         Insert: {
           created_at?: string
           name: string
           org_id?: string
+          org_type?: string
           recovery_fee_percent_bps?: number
         }
         Update: {
           created_at?: string
           name?: string
           org_id?: string
+          org_type?: string
           recovery_fee_percent_bps?: number
         }
         Relationships: []
