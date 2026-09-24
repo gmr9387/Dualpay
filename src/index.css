@@ -6,63 +6,77 @@
 
 @layer base {
   :root {
-    /* Enterprise clinical palette — slate surfaces, indigo accent */
-    --background: 210 20% 98%;
-    --foreground: 222 47% 11%;
+    /* Forest & gold on warm white — healthcare, premium, restrained.
+       Green and gold are accent colors, not fill colors: most of the UI
+       stays neutral warm-white/charcoal, so the two brand colors read as
+       deliberate rather than decorative. */
+    --background: 40 20% 98%;
+    --foreground: 150 15% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 150 15% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 150 15% 12%;
 
-    --primary: 221 83% 45%;
+    --primary: 152 42% 21%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 30% 95%;
-    --secondary-foreground: 222 30% 22%;
+    --secondary: 40 15% 94%;
+    --secondary-foreground: 150 15% 20%;
 
-    --muted: 210 25% 96%;
-    --muted-foreground: 215 16% 42%;
+    --muted: 40 15% 95%;
+    --muted-foreground: 150 8% 40%;
 
-    --accent: 221 70% 96%;
-    --accent-foreground: 221 83% 35%;
+    --accent: 152 30% 94%;
+    --accent-foreground: 152 45% 20%;
 
-    --destructive: 0 72% 45%;
+    /* Gold: reserved for deliberate highlights (badges, active-state
+       accents) -- never a fill color, never a status color. */
+    --gold: 42 55% 45%;
+    --gold-foreground: 35 40% 14%;
+
+    --destructive: 0 65% 42%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 215 20% 89%;
-    --input: 215 20% 89%;
-    --ring: 221 83% 45%;
+    --border: 40 12% 88%;
+    --input: 40 12% 88%;
+    --ring: 152 42% 30%;
 
     --radius: 0.5rem;
 
-    /* Status — workflow semantics */
-    --status-paid: 152 60% 36%;
+    /* Status — workflow semantics, independent of brand color. Paid is a
+       brighter/more saturated green than the deep, muted primary so the
+       two never get confused where they appear near each other; pending
+       sits further from gold's hue than the old palette so a warning
+       chip is never mistaken for a brand accent. */
+    --status-paid: 145 55% 38%;
     --status-denied: 0 72% 45%;
-    --status-pending: 38 92% 42%;
+    --status-pending: 28 85% 45%;
     --status-adjusted: 262 52% 47%;
     --status-cob: 199 89% 38%;
 
-    --positive: 152 60% 32%;
+    --positive: 145 55% 32%;
     --negative: 0 72% 45%;
-    --neutral: 215 16% 42%;
+    --neutral: 150 8% 40%;
 
     /* Surface elevation */
-    --surface-0: 210 20% 98%;
+    --surface-0: 40 20% 98%;
     --surface-1: 0 0% 100%;
-    --surface-2: 210 25% 96%;
-    --surface-3: 215 20% 92%;
+    --surface-2: 40 15% 95%;
+    --surface-3: 40 12% 91%;
 
-    /* Sidebar (dark navigation rail) */
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 210 20% 88%;
-    --sidebar-primary: 221 83% 60%;
+    /* Sidebar — light rail, not a dark dev-tool panel. Only the active
+       nav item picks up the green/gold treatment; everything else stays
+       neutral so those two colors stay "sparingly." */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 150 12% 18%;
+    --sidebar-primary: 152 42% 21%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 40% 17%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 222 40% 18%;
-    --sidebar-ring: 221 83% 60%;
+    --sidebar-accent: 152 30% 94%;
+    --sidebar-accent-foreground: 152 45% 18%;
+    --sidebar-border: 40 12% 90%;
+    --sidebar-ring: 152 42% 30%;
 
     --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', monospace;

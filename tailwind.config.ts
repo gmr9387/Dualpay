@@ -69,6 +69,10 @@ export default {
           adjusted: "hsl(var(--status-adjusted))",
           cob: "hsl(var(--status-cob))",
         },
+        gold: {
+          DEFAULT: "hsl(var(--gold))",
+          foreground: "hsl(var(--gold-foreground))",
+        },
         surface: {
           "0": "hsl(var(--surface-0))",
           "1": "hsl(var(--surface-1))",

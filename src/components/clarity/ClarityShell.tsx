@@ -192,17 +192,17 @@ export function ClarityShell({ children, cloudOnline = true }: ClarityShellProps
                       to={item.to}
                       end={item.to === '/'}
                       className={({ isActive }) =>
-                        `w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[12.5px] transition-colors ${
+                        `w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[12.5px] transition-colors border-l-2 ${
                           isActive
-                            ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-                            : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground'
+                            ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium border-gold'
+                            : 'border-transparent text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground'
                         }`
                       }
                     >
                       <Icon className="h-3.5 w-3.5 shrink-0" />
                       <span className="flex-1 text-left truncate">{item.label}</span>
                       {item.badge && (
-                        <span className="text-[8.5px] font-mono font-semibold tracking-wider px-1 py-0.5 rounded bg-sidebar-primary/20 text-sidebar-primary">
+                        <span className="text-[8.5px] font-mono font-semibold tracking-wider px-1 py-0.5 rounded bg-gold/15 text-gold border border-gold/30">
                           {item.badge}
                         </span>
                       )}
