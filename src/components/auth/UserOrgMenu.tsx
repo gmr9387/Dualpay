@@ -88,7 +88,7 @@ export function NoOrgEmptyState() {
           <div className="text-sm font-bold">Create your organization</div>
         </div>
         <p className="text-xs text-muted-foreground">
-          Claim Clarity scopes all data by organization. Create one to continue.
+          DualPay scopes all data by organization. Create one to continue.
         </p>
         <input value={name} onChange={e => setName(e.target.value)}
           className="w-full h-9 px-3 rounded-md border bg-background text-sm" />
