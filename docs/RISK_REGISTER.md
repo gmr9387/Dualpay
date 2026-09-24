@@ -40,6 +40,7 @@
 | 27 | Data loss window between snapshots (no PITR configured) | Low | High | Verify PITR enabled on hosting tier | SRE | Mitigating |
 | 28 | Storage bucket accidentally set public | Low | High | Buckets `evidence-documents` + `appeal-packets` private; workspace policy blocks public; alert on config change | Security | Closed |
 | 29 | Denial-of-service via unbounded query on operational tables | Medium | Medium | Server-side pagination; row limits (`limit(1000)` on ops_events); index review | Eng | Mitigating |
+| 29b | `claim_assignments_update_demo` policy granted UPDATE on any row `TO public` unconditionally (`qual=true`), bypassing org scoping entirely | High | High | Dropped in `20260924224814_dualpay_rls_perf_and_demo_policy_fix.sql` | Eng | Closed |
 | 30 | Slow queries block adjudication pipeline | Medium | Medium | Query monitoring; indexes on `org_id`, `claim_id`, `status`, `occurred_at` | Data | Mitigating |
 | 31 | Missing index on frequently filtered columns | Medium | Medium | Quarterly index review via Supabase `slow_queries` tool | Data | Open |
 | 32 | Schema migration deployed without corresponding types/UI changes | Medium | Medium | Migration + type-regeneration + code deploy tied in release runbook | Eng | Mitigating |
@@ -67,7 +68,7 @@
 | 54 | Insufficient logging of failed auth attempts | Medium | Medium | Enable auth-log export; alert on threshold | Security | Open |
 | 55 | Departing employee retains org access | Medium | High | Offboarding runbook: remove `organization_members` row + revoke sessions | Compliance | Open |
 | 56 | Contractor access not time-bound | Medium | Medium | Add `expires_at` on `organization_members`; nightly cleanup job | Compliance | Open |
-| 57 | No documented data classification / handling policy | High | Medium | Publish policy; annotate table columns with classification | Compliance | Open |
+| 57 | No documented data classification / handling policy | High | Medium | Published `docs/DATA_CLASSIFICATION.md` | Compliance | Closed |
 | 58 | No BAA on file with a third-party subprocessor | Medium | High | Inventory subprocessors; execute BAAs (hosting, email, error monitoring) | Legal | Open |
 | 59 | Error-monitoring tool captures PHI in stack traces | Medium | High | Redact request bodies; PII/PHI scrubbing before send | Eng | Open |
 | 60 | Analytics tool receives PHI via URL params | Low | High | No PHI in URLs; verified via route audit | Eng | Closed |
@@ -116,8 +117,8 @@
 
 ## Summary
 
-- **Total risks:** 100
-- **Open:** 46 · **Mitigating:** 33 · **Closed:** 21
+- **Total risks:** 101
+- **Open:** 45 · **Mitigating:** 33 · **Closed:** 23
 - **Top themes (by count of Open + Mitigating):** governance & policy gaps (retention, IR runbook, officer designations, workforce training), audit-log completeness, MFA/HIBP, vendor/BAA management, and DR rehearsal.
 
 ## Cross-references
