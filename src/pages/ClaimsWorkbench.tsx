@@ -118,6 +118,8 @@ export default function ClaimsWorkbench() {
   const [liveContract, setLiveContract] = useState<ContractTerms | null>(null);
   const [livePlan, setLivePlan] = useState<PlanBenefits | null>(null);
   const [deepLinked, setDeepLinked] = useState<{ claim: Claim; result: AdjResult | null } | null>(null);
+  const [caseClaims, setCaseClaims] = useState<Claim[]>([]);
+  const [caseRuns, setCaseRuns] = useState<AdjResult[]>([]);
 
   // Page-independent data (cases, accumulators, the KPI sample) loads once
   // no matter how many times `page` changes -- the promise is cached so a
@@ -240,6 +242,26 @@ export default function ClaimsWorkbench() {
   }, [selectedClaim, cases]);
   const selectedCaseEvents = selectedCase ? caseEvents.filter(e => e.case_id === selectedCase.case_id) : [];
 
+  // A case's claims (N→1 grouping) can land on any page or none of them --
+  // fetch the case's own claim_ids directly rather than relying on
+  // whichever page happens to be loaded, so the Case tab's related-claims
+  // list is complete instead of silently partial.
+  useEffect(() => {
+    const claimIds = selectedCase?.claim_ids ?? [];
+    if (claimIds.length === 0) { setCaseClaims([]); setCaseRuns([]); return; }
+    let cancelled = false;
+    (async () => {
+      const [cc, cr] = await Promise.all([loadClaimsByIds(claimIds), loadRunsForClaims(claimIds)]);
+      if (cancelled) return;
+      setCaseClaims(cc);
+      setCaseRuns(cr);
+    })();
+    return () => { cancelled = true; };
+    // claim_ids is keyed by case_id and doesn't change independently of it;
+    // depending on the array itself would re-fetch every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCase?.case_id]);
+
   const handleCaseEvent = (event: CaseEvent, newStatus?: CaseStatus) => {
     setCaseEvents(prev => [...prev, event]);
     if (newStatus) {
@@ -314,7 +336,7 @@ export default function ClaimsWorkbench() {
               <ClaimWorkspace
                 claim={selectedClaim} result={selectedResult}
                 caseData={selectedCase} caseEvents={selectedCaseEvents}
-                claims={claims} adjResults={pageRuns} accumulators={accumulators}
+                claims={caseClaims} adjResults={caseRuns} accumulators={accumulators}
                 contract={isDemoModeEnabled() ? demoContract : (liveContract ?? LIVE_CONTRACT)}
                 plan={isDemoModeEnabled() ? demoPlan : (livePlan ?? LIVE_PLAN)}
                 priorOutcomes={isDemoModeEnabled() ? demoPriorOutcomes : []}
