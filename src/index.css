@@ -46,17 +46,18 @@
     --radius: 0.5rem;
 
     /* Status — workflow semantics, independent of brand color. Paid is a
-       brighter/more saturated green than the deep, muted primary so the
-       two never get confused where they appear near each other; pending
-       sits further from gold's hue than the old palette so a warning
-       chip is never mistaken for a brand accent. */
-    --status-paid: 145 55% 38%;
+       deep, high-contrast green (distinguished from the brand primary by
+       hue/saturation, not by being lighter -- 38% lightness read as pale
+       and low-contrast at small text sizes); pending sits further from
+       gold's hue than the old palette so a warning chip is never mistaken
+       for a brand accent. */
+    --status-paid: 145 58% 26%;
     --status-denied: 0 72% 45%;
     --status-pending: 28 85% 45%;
     --status-adjusted: 262 52% 47%;
     --status-cob: 199 89% 38%;
 
-    --positive: 145 55% 32%;
+    --positive: 145 58% 22%;
     --negative: 0 72% 45%;
     --neutral: 150 8% 40%;
 

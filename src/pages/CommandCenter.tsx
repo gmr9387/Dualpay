@@ -66,7 +66,7 @@ export default function CommandCenter() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Claim Clarity · Command Center"
+        title="DualPay · Command Center"
         subtitle="Healthcare adjudication intelligence — deterministic decisions, auditable trace, replayable across payers."
       />
       <KpiStrip tiles={[

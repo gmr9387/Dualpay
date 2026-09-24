@@ -171,7 +171,7 @@ export function ClarityShell({ children, cloudOnline = true }: ClarityShellProps
             <Shield className="h-4 w-4 text-sidebar-primary" />
           </div>
           <div className="leading-tight">
-            <div className="text-[13px] font-bold tracking-tight">Claim Clarity</div>
+            <div className="text-[13px] font-bold tracking-tight">DualPay</div>
             <div className="text-[10px] font-mono text-sidebar-foreground/55">Healthcare Adjudication Intelligence</div>
             <div className="text-[9px] font-mono text-sidebar-primary/70 mt-0.5">Powered by ValtariOS</div>
           </div>
