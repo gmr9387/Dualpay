@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ClarityShell } from "@/components/clarity/ClarityShell";
-import { AuthProvider } from "@/hooks/use-auth";
+import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { OrgProvider } from "@/hooks/use-org";
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import Login from "./pages/Login";
@@ -175,6 +175,24 @@ const ProtectedShell = () => (
   </RequireAuth>
 );
 
+// The root path is the one place unauthenticated visitors actually land
+// on ("showing up to the site"), so it can't just fall into RequireAuth's
+// blanket redirect to /login the way every other route correctly does.
+// Logged in -> the exact same authenticated shell as before (nothing
+// changes for existing users). Logged out -> the marketing page, not a
+// login form as the very first thing a visitor sees.
+const RootGate = () => {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center text-sm text-muted-foreground">
+        Loading…
+      </div>
+    );
+  }
+  return user ? <ProtectedShell /> : <Welcome />;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -183,6 +201,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
+            <Route path="/" element={<RootGate />} />
             <Route path="/welcome" element={<Welcome />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
