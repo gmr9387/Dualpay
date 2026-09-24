@@ -25,6 +25,7 @@ interface Member {
   invited_at: string | null;
   last_sign_in_at: string | null;
   created_at: string;
+  expires_at: string | null;
 }
 
 const ROLE_OPTIONS = ['admin', 'manager', 'analyst', 'viewer'] as const;
@@ -104,6 +105,7 @@ function MembersPanel({ orgId, selfUserId }: { orgId: string; selfUserId: string
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<(typeof ROLE_OPTIONS)[number]>('analyst');
+  const [expiresAt, setExpiresAt] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -132,6 +134,7 @@ function MembersPanel({ orgId, selfUserId }: { orgId: string; selfUserId: string
         org_id: orgId,
         email: email.trim(),
         role,
+        expires_at: expiresAt || null,
         redirect_to: `${window.location.origin}/reset-password`,
       },
     });
@@ -140,8 +143,20 @@ function MembersPanel({ orgId, selfUserId }: { orgId: string; selfUserId: string
       toast({ title: 'Invite failed', description: error?.message ?? (data as { error?: string })?.error, variant: 'destructive' });
       return;
     }
-    toast({ title: 'Invite sent', description: `${email} · ${role}` });
+    toast({ title: 'Invite sent', description: `${email} · ${role}${expiresAt ? ` · expires ${new Date(expiresAt).toLocaleDateString()}` : ''}` });
     setEmail('');
+    setExpiresAt('');
+    void load();
+  }
+
+  async function setMemberExpiry(m: Member, value: string) {
+    setBusy(m.user_id);
+    const { error } = await supabase.functions.invoke('invite-member', {
+      body: { action: 'set_expiry', org_id: orgId, user_id: m.user_id, expires_at: value || null },
+    });
+    setBusy(null);
+    if (error) { toast({ title: 'Update failed', description: error.message, variant: 'destructive' }); return; }
+    toast({ title: value ? 'Expiry set' : 'Expiry cleared', description: m.email ?? m.user_id.slice(0, 8) });
     void load();
   }
 
@@ -189,6 +204,11 @@ function MembersPanel({ orgId, selfUserId }: { orgId: string; selfUserId: string
               {ROLE_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
+          <div>
+            <label className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1 block">Expires (optional)</label>
+            <input type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)}
+              className="h-9 px-2 rounded-md border bg-background text-sm" title="Leave blank for standing access -- use for contractors or time-bound access" />
+          </div>
           <Button type="submit" disabled={busy === 'invite' || !email}>
             {busy === 'invite' ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <UserPlus className="h-3.5 w-3.5 mr-1.5" />}
             Send invite
@@ -196,37 +216,51 @@ function MembersPanel({ orgId, selfUserId }: { orgId: string; selfUserId: string
         </form>
 
         <div className="border rounded">
-          <div className="grid grid-cols-[1fr_110px_140px_140px_100px] gap-3 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/40 border-b">
-            <span>Member</span><span>Role</span><span>Invited</span><span>Last sign-in</span><span className="text-right">Actions</span>
+          <div className="grid grid-cols-[1fr_100px_120px_120px_150px_100px] gap-3 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/40 border-b">
+            <span>Member</span><span>Role</span><span>Invited</span><span>Last sign-in</span><span>Expires</span><span className="text-right">Actions</span>
           </div>
           {loading ? (
             <div className="p-6 text-center text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin inline mr-2" /> Loading members…</div>
           ) : members.length === 0 ? (
             <div className="p-6 text-center text-sm text-muted-foreground">No members yet.</div>
-          ) : members.map(m => (
-            <div key={m.user_id} className="grid grid-cols-[1fr_110px_140px_140px_100px] gap-3 items-center px-3 py-2 text-sm border-b last:border-b-0">
-              <div className="min-w-0">
-                <div className="truncate text-foreground">{m.email ?? m.user_id.slice(0, 8)}{m.user_id === selfUserId && <span className="ml-1 text-[10px] uppercase text-muted-foreground">(you)</span>}</div>
-                <div className="text-[10.5px] font-mono text-muted-foreground truncate">{m.user_id}</div>
-              </div>
-              <span className="text-[11.5px] font-mono uppercase tracking-wider text-muted-foreground">{m.role}</span>
-              <span className="text-[11.5px] text-muted-foreground">{m.invited_at ? new Date(m.invited_at).toLocaleDateString() : '—'}</span>
-              <span className="text-[11.5px] text-muted-foreground">{m.last_sign_in_at ? new Date(m.last_sign_in_at).toLocaleDateString() : 'never'}</span>
-              <div className="flex justify-end gap-1">
-                {!m.last_sign_in_at && m.email && (
-                  <Button variant="ghost" size="sm" onClick={() => resend(m)} disabled={busy === m.user_id} title="Resend invite">
-                    <RefreshCw className={`h-3.5 w-3.5 ${busy === m.user_id ? 'animate-spin' : ''}`} />
+          ) : members.map(m => {
+            const isExpired = !!m.expires_at && new Date(m.expires_at).getTime() <= Date.now();
+            return (
+              <div key={m.user_id} className={`grid grid-cols-[1fr_100px_120px_120px_150px_100px] gap-3 items-center px-3 py-2 text-sm border-b last:border-b-0 ${isExpired ? 'bg-status-denied/5' : ''}`}>
+                <div className="min-w-0">
+                  <div className="truncate text-foreground">{m.email ?? m.user_id.slice(0, 8)}{m.user_id === selfUserId && <span className="ml-1 text-[10px] uppercase text-muted-foreground">(you)</span>}</div>
+                  <div className="text-[10.5px] font-mono text-muted-foreground truncate">{m.user_id}</div>
+                </div>
+                <span className="text-[11.5px] font-mono uppercase tracking-wider text-muted-foreground">{m.role}</span>
+                <span className="text-[11.5px] text-muted-foreground">{m.invited_at ? new Date(m.invited_at).toLocaleDateString() : '—'}</span>
+                <span className="text-[11.5px] text-muted-foreground">{m.last_sign_in_at ? new Date(m.last_sign_in_at).toLocaleDateString() : 'never'}</span>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="date"
+                    defaultValue={m.expires_at ? m.expires_at.slice(0, 10) : ''}
+                    onBlur={e => { if (e.target.value !== (m.expires_at?.slice(0, 10) ?? '')) void setMemberExpiry(m, e.target.value); }}
+                    disabled={busy === m.user_id || m.user_id === selfUserId}
+                    className={`h-7 px-1.5 text-[11px] rounded border bg-background w-full ${isExpired ? 'border-status-denied text-status-denied' : ''}`}
+                    title={isExpired ? 'Access expired -- RLS denies this member until cleared or extended' : 'Set an expiry for time-bound access; blank = standing access'}
+                  />
+                </div>
+                <div className="flex justify-end gap-1">
+                  {!m.last_sign_in_at && m.email && (
+                    <Button variant="ghost" size="sm" onClick={() => resend(m)} disabled={busy === m.user_id} title="Resend invite">
+                      <RefreshCw className={`h-3.5 w-3.5 ${busy === m.user_id ? 'animate-spin' : ''}`} />
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="sm" onClick={() => remove(m)} disabled={busy === m.user_id || m.user_id === selfUserId} title="Remove">
+                    <Trash2 className="h-3.5 w-3.5 text-status-denied" />
                   </Button>
-                )}
-                <Button variant="ghost" size="sm" onClick={() => remove(m)} disabled={busy === m.user_id || m.user_id === selfUserId} title="Remove">
-                  <Trash2 className="h-3.5 w-3.5 text-status-denied" />
-                </Button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <p className="text-[11px] text-muted-foreground">
           Invited users receive an email from Lovable Cloud, set their password, and are placed directly into this organization with the chosen role.
+          Set an expiry for contractor or temporary access -- once it passes, access is denied immediately (enforced at the database level, not just hidden in the UI) and the row is purged the following night.
         </p>
       </CardContent>
     </Card>

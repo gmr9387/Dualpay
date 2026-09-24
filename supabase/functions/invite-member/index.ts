@@ -1,7 +1,8 @@
 // invite-member — admin-only edge function to invite a user to the caller's
 // current org.  Uses the service role to call auth.admin.inviteUserByEmail and
-// stamps `invited_org_id` + `invited_role` in user metadata so the
-// `handle_new_user_org` trigger routes the new auth user into that org.
+// stamps `invited_org_id` + `invited_role` (+ optional `invited_expires_at`) in
+// user metadata so the `handle_new_user_org` trigger routes the new auth user
+// into that org with the right role and expiry.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 
@@ -21,7 +22,7 @@ Deno.serve(async (req) => {
     const service = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
     // Identify caller
-    const asCaller = createClient(url, anon, { global: { headers: { Authorization: authHeader } } });
+    const asCaller = createClient(url, anon, { global: { headers: { Authorization: authHeader } }, db: { schema: 'dualpay' } });
     const { data: userRes, error: uErr } = await asCaller.auth.getUser();
     if (uErr || !userRes.user) return json({ error: 'not authenticated' }, 401);
     const caller = userRes.user;
@@ -31,7 +32,7 @@ Deno.serve(async (req) => {
     const orgId = String(body.org_id ?? '');
     if (!orgId) return json({ error: 'org_id required' }, 400);
 
-    const admin = createClient(url, service);
+    const admin = createClient(url, service, { db: { schema: 'dualpay' } });
 
     // Authorization: caller must be admin/owner in the target org
     const { data: mem, error: mErr } = await admin
@@ -45,16 +46,27 @@ Deno.serve(async (req) => {
       return json({ error: 'forbidden: admin/owner required' }, 403);
     }
 
+    // expires_at: null/absent clears expiry, a non-empty ISO string sets it.
+    function parseExpiresAt(raw: unknown): { ok: true; value: string | null } | { ok: false } {
+      if (raw === undefined || raw === null || raw === '') return { ok: true, value: null };
+      const d = new Date(String(raw));
+      if (Number.isNaN(d.getTime())) return { ok: false };
+      return { ok: true, value: d.toISOString() };
+    }
+
     if (action === 'invite' || action === 'resend') {
       const email = String(body.email ?? '').trim().toLowerCase();
       const role  = String(body.role ?? 'analyst');
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: 'invalid email' }, 400);
       if (!ROLES.has(role)) return json({ error: 'invalid role' }, 400);
 
+      const expiresAt = parseExpiresAt(body.expires_at);
+      if (!expiresAt.ok) return json({ error: 'invalid expires_at' }, 400);
+
       const redirectTo = String(body.redirect_to ?? '') || undefined;
 
       const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-        data: { invited_org_id: orgId, invited_role: role, invited_by: caller.id },
+        data: { invited_org_id: orgId, invited_role: role, invited_by: caller.id, invited_expires_at: expiresAt.value },
         redirectTo,
       });
       if (error) return json({ error: error.message }, 400);
@@ -63,10 +75,24 @@ Deno.serve(async (req) => {
       if (data?.user?.id) {
         await admin
           .from('organization_members')
-          .upsert({ org_id: orgId, user_id: data.user.id, role }, { onConflict: 'org_id,user_id' });
+          .upsert({ org_id: orgId, user_id: data.user.id, role, expires_at: expiresAt.value }, { onConflict: 'org_id,user_id' });
       }
 
       return json({ ok: true, user_id: data?.user?.id ?? null });
+    }
+
+    if (action === 'set_expiry') {
+      const userId = String(body.user_id ?? '');
+      if (!userId) return json({ error: 'user_id required' }, 400);
+      const expiresAt = parseExpiresAt(body.expires_at);
+      if (!expiresAt.ok) return json({ error: 'invalid expires_at' }, 400);
+      const { error } = await admin
+        .from('organization_members')
+        .update({ expires_at: expiresAt.value })
+        .eq('org_id', orgId)
+        .eq('user_id', userId);
+      if (error) return json({ error: error.message }, 400);
+      return json({ ok: true });
     }
 
     if (action === 'remove') {
@@ -85,7 +111,7 @@ Deno.serve(async (req) => {
     if (action === 'list') {
       const { data: rows, error } = await admin
         .from('organization_members')
-        .select('user_id, role, created_at')
+        .select('user_id, role, created_at, expires_at')
         .eq('org_id', orgId);
       if (error) return json({ error: error.message }, 400);
 
@@ -96,6 +122,7 @@ Deno.serve(async (req) => {
           user_id: r.user_id,
           role: r.role,
           created_at: r.created_at,
+          expires_at: r.expires_at,
           email: u?.user?.email ?? null,
           invited_at: u?.user?.invited_at ?? null,
           last_sign_in_at: u?.user?.last_sign_in_at ?? null,

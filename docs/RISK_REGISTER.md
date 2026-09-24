@@ -67,7 +67,7 @@
 | 53 | Password reset link intercepted | Low | Medium | Time-limited tokens; single-use; TLS-only email links | Security | Mitigating |
 | 54 | Insufficient logging of failed auth attempts | Medium | Medium | Enable auth-log export; alert on threshold | Security | Open |
 | 55 | Departing employee retains org access | Medium | High | Offboarding runbook: remove `organization_members` row + revoke sessions | Compliance | Open |
-| 56 | Contractor access not time-bound | Medium | Medium | Add `expires_at` on `organization_members`; nightly cleanup job | Compliance | Open |
+| 56 | Contractor access not time-bound | Medium | Medium | `expires_at` added to `organization_members`, enforced directly in `is_org_member`/`has_org_role` (so every RLS policy denies access the instant it passes, independent of any job running); admin UI to set/clear per member or at invite time; nightly `pg_cron` job purges stale expired rows | Eng | Closed |
 | 57 | No documented data classification / handling policy | High | Medium | Published `docs/DATA_CLASSIFICATION.md` | Compliance | Closed |
 | 58 | No BAA on file with a third-party subprocessor | Medium | High | Inventory subprocessors; execute BAAs (hosting, email, error monitoring) | Legal | Open |
 | 59 | Error-monitoring tool captures PHI in stack traces | Medium | High | Redact request bodies; PII/PHI scrubbing before send | Eng | Open |
@@ -118,7 +118,7 @@
 ## Summary
 
 - **Total risks:** 101
-- **Open:** 42 · **Mitigating:** 33 · **Closed:** 26
+- **Open:** 41 · **Mitigating:** 33 · **Closed:** 27
 - **Top themes (by count of Open + Mitigating):** governance & policy gaps (retention, IR runbook, officer designations, workforce training), audit-log completeness, MFA/HIBP, vendor/BAA management, and DR rehearsal.
 
 ## Cross-references

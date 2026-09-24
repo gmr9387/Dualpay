@@ -1270,18 +1270,21 @@ export type Database = {
       organization_members: {
         Row: {
           created_at: string
+          expires_at: string | null
           org_id: string
           role: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          expires_at?: string | null
           org_id: string
           role: string
           user_id: string
         }
         Update: {
           created_at?: string
+          expires_at?: string | null
           org_id?: string
           role?: string
           user_id?: string
