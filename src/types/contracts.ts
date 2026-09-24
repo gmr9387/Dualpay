@@ -35,6 +35,8 @@ export interface FeeScheduleRow {
 
 export type DisputeSeverity = 'low' | 'medium' | 'high' | 'critical';
 export type DisputeStatus = 'open' | 'in_review' | 'submitted' | 'recovered' | 'closed';
+/** underpayment: provider was shorted (Recovery Ops). overpayment: payer paid too much (payment integrity / "find lost money"). */
+export type DisputeDirection = 'underpayment' | 'overpayment';
 
 /** The client's (provider org's) decision after receiving a recovery report. */
 export type ClientResponse = 'pending' | 'approved_pursue' | 'declined' | 'handling_internally';
@@ -52,6 +54,7 @@ export interface UnderpaymentDispute {
   paid_amount_cents: number;
   variance_amount_cents: number;
   variance_percent: number;
+  direction: DisputeDirection | string;
   severity: DisputeSeverity | string;
   status: DisputeStatus | string;
   explanation?: string | null;

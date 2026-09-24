@@ -26,8 +26,8 @@ const AUTO_OPEN_MIN_VARIANCE_CENTS = 5_00; // $5
 
 export async function maybeGenerateDispute(input: DisputeGenInput): Promise<UnderpaymentDispute | null> {
   const { underpayment } = input;
-  if (!underpayment.is_underpayment) return null;
-  if (underpayment.variance_cents < AUTO_OPEN_MIN_VARIANCE_CENTS) return null;
+  if (underpayment.direction === 'none') return null;
+  if (Math.abs(underpayment.variance_cents) < AUTO_OPEN_MIN_VARIANCE_CENTS) return null;
 
   return createDispute({
     claim_id: input.claim_id,
@@ -40,6 +40,7 @@ export async function maybeGenerateDispute(input: DisputeGenInput): Promise<Unde
     paid_amount_cents: input.paid_cents,
     variance_amount_cents: underpayment.variance_cents,
     variance_percent: underpayment.variance_percent,
+    direction: underpayment.direction,
     severity: underpayment.severity,
     status: 'open',
     explanation: underpayment.explanation,

@@ -65,6 +65,7 @@ const SECTIONS: NavSection[] = [
       { to: '/plan-benefits',       label: 'Plan Benefits',      icon: ShieldCheck, badge: 'NEW' },
       { to: '/contracts/disputes',  label: 'Contract Recovery',  icon: AlertOctagon, badge: 'NEW' },
       { to: '/contracts/analytics', label: 'Contract Analytics', icon: BarChart3,   badge: 'NEW' },
+      { to: '/payer-findings',      label: 'Payer Findings',     icon: Search,      badge: 'NEW' },
     ],
   },
   {
@@ -291,6 +292,7 @@ function breadcrumbsFor(pathname: string): string[] {
     '/escalations':         ['Recovery Operations', 'Escalations'],
     '/workload':            ['Recovery Operations', 'Workload Management'],
     '/payer-ops':           ['Recovery Operations', 'Payer Operations'],
+    '/payer-findings':      ['Contract Intelligence', 'Payer Findings'],
     '/pipeline':            ['Execute',    'Recovery Pipeline'],
     '/forecast':            ['Intelligence','Recovery Forecast'],
     '/team':                ['Payers & Team','Team Operations'],

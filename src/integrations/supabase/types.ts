@@ -1884,6 +1884,7 @@ export type Database = {
           contract_id: string | null
           created_at: string
           dedupe_key: string | null
+          direction: string
           dispute_id: string
           expected_amount_cents: number
           explanation: string | null
@@ -1913,6 +1914,7 @@ export type Database = {
           contract_id?: string | null
           created_at?: string
           dedupe_key?: string | null
+          direction?: string
           dispute_id?: string
           expected_amount_cents?: number
           explanation?: string | null
@@ -1942,6 +1944,7 @@ export type Database = {
           contract_id?: string | null
           created_at?: string
           dedupe_key?: string | null
+          direction?: string
           dispute_id?: string
           expected_amount_cents?: number
           explanation?: string | null

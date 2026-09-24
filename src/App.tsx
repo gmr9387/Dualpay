@@ -63,6 +63,7 @@ import ContractDetail from "./pages/ContractDetail";
 import ContractUpload from "./pages/ContractUpload";
 import ContractDisputes from "./pages/ContractDisputes";
 import ContractAnalytics from "./pages/ContractAnalytics";
+import PayerFindings from "./pages/PayerFindings";
 import PlanBenefitsHome from "./pages/PlanBenefitsHome";
 import PlanBenefitsUpload from "./pages/PlanBenefitsUpload";
 import AutomationHome from "./pages/AutomationHome";
@@ -145,6 +146,7 @@ const ProtectedShell = () => (
           <Route path="/contracts/upload" element={<ContractUpload />} />
           <Route path="/contracts/disputes" element={<ContractDisputes />} />
           <Route path="/contracts/analytics" element={<ContractAnalytics />} />
+          <Route path="/payer-findings" element={<PayerFindings />} />
           <Route path="/contracts/:contractId" element={<ContractDetail />} />
           <Route path="/plan-benefits" element={<PlanBenefitsHome />} />
           <Route path="/plan-benefits/upload" element={<PlanBenefitsUpload />} />

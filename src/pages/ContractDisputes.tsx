@@ -24,7 +24,10 @@ const RESPONSE_LABEL: Record<string, string> = {
 };
 
 export default function ContractDisputes() {
-  const { disputes, loading, reload } = useDisputes();
+  const { disputes: allDisputes, loading, reload } = useDisputes();
+  // This page is the provider recovery workflow — overpayment findings
+  // (payer "find lost money" direction) live on the Payer Findings page.
+  const disputes = allDisputes.filter(d => d.direction !== 'overpayment');
   const { currentOrg, setRecoveryFeePercent } = useOrg();
   const canApprove = can.escalate(currentOrg?.role);
   const canManageOrg = can.manageOrg(currentOrg?.role);
