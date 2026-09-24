@@ -13,8 +13,6 @@
 import { Link } from 'react-router-dom';
 import { Shield, ArrowRight, FileCheck, Search, RotateCcw } from 'lucide-react';
 import heroClinician from '@/assets/marketing/hero-clinician.jpg';
-import invoiceDetail from '@/assets/marketing/invoice-detail.jpg';
-import providerDesk from '@/assets/marketing/provider-desk.jpg';
 import documentReview from '@/assets/marketing/document-review.jpg';
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
@@ -114,7 +112,7 @@ export default function Welcome() {
         <h2 className="font-display text-[30px] font-semibold tracking-tight max-w-lg">
           Built for both sides of the claim
         </h2>
-        <div className="mt-10 grid lg:grid-cols-[0.85fr_0.85fr_1fr] gap-5">
+        <div className="mt-10 grid sm:grid-cols-2 gap-5">
           <div className="rounded-xl border bg-card p-6">
             <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center mb-4">
               <FileCheck className="h-5 w-5 text-primary" />
@@ -137,34 +135,6 @@ export default function Welcome() {
               from the same 835 import.
             </p>
           </div>
-          <div className="relative rounded-xl overflow-hidden border shadow-sm min-h-[220px]">
-            <img src={providerDesk} alt="Provider reviewing claims at their desk" className="w-full h-full object-cover absolute inset-0" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[hsl(150_45%_10%)]/90 via-[hsl(150_45%_10%)]/10 to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 p-5">
-              <div className="text-white text-[13.5px] font-medium leading-snug">
-                Built for the people who reconcile these claims every day —
-                not just the dashboards above them.
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Precision / audit trail band */}
-      <section className="max-w-6xl mx-auto px-6 py-16 grid md:grid-cols-2 gap-12 items-center">
-        <div className="rounded-2xl overflow-hidden border shadow-xl aspect-[4/3]">
-          <img src={invoiceDetail} alt="Close-up of a claim and remittance being reviewed line by line" className="w-full h-full object-cover" />
-        </div>
-        <div>
-          <Eyebrow>Line-Level Precision</Eyebrow>
-          <h3 className="font-display text-[26px] font-semibold tracking-tight leading-tight">
-            Every line, matched back to the number that governs it
-          </h3>
-          <p className="mt-4 text-[14px] text-muted-foreground leading-relaxed">
-            No variance is flagged without a citation. Each finding traces to the exact
-            contract clause, fee-schedule row, or plan rule that produced it — so a
-            reviewer can verify a result in seconds, not re-derive it from scratch.
-          </p>
         </div>
       </section>
 
