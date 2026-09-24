@@ -2,8 +2,15 @@
  * Claims Workbench — refactored from legacy DualPay Index.
  * Provides the deep adjudication / trace / state machine / case view
  * for individual claims as a secondary surface to Claim Clarity.
+ *
+ * Paginated (see repository.ts loadClaimsPage doc / the load-test commit
+ * this followed): loading every claim's full payload on every visit does
+ * not scale past a few thousand claims per org. "Shared" data (cases,
+ * accumulators, the KPI sample) is fetched once via ensureBootstrap();
+ * only the claims page itself, its adjudication runs, and the
+ * on-this-page auto-adjudication loop re-run when `page` changes.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { resetIdCounter } from '@/engine/calculation-engine';
 import { executeAdjudicationWithReplay } from '@/engine/adjudication-orchestrator';
@@ -15,7 +22,8 @@ import { loadLiveContract } from '@/lib/contracts';
 import { loadLivePlan } from '@/lib/plan-benefits';
 import type { ContractTerms, PlanBenefits } from '@/types/claim';
 import {
-  loadClaims, loadCases, loadCaseEvents, loadAccumulators, loadLatestRuns,
+  loadClaimsPage, loadClaimById, loadClaimsByIds, loadCases, loadCaseEvents, loadAccumulators,
+  loadRunsForClaims, loadRecentRunsForKpis, getClaimCounts,
   saveAdjudication, saveClaim, seedIfEmpty,
 } from '@/data/repository';
 import type { Claim, AdjudicationRun, MemberAccumulators } from '@/types/claim';
@@ -25,11 +33,13 @@ import { ClaimList } from '@/components/admin/ClaimList';
 import { ClaimOperationsKpis } from '@/components/admin/ClaimOperationsKpis';
 import { ClaimWorkspace } from '@/components/admin/ClaimWorkspace';
 import { PageHeader, EmptyState } from '@/components/clarity/primitives';
-import { Inbox, Loader2 } from 'lucide-react';
+import { Inbox, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface AdjResult { claimId: string; run: AdjudicationRun; trace: TraceObject; }
 
 interface NucleusGateResult { blocked: boolean; reason?: string; }
+
+const PAGE_SIZE = 50;
 
 /**
  * Real, blocking nucleus check: a deny or critical-risk line stops the
@@ -81,35 +91,74 @@ async function checkNucleusGate(claim: Claim): Promise<NucleusGateResult> {
   return { blocked: false };
 }
 
+interface Bootstrap {
+  cases: Case[];
+  caseEvents: CaseEvent[];
+  accumulators: Record<string, MemberAccumulators>;
+  claimCounts: { total: number; needsReview: number };
+  kpiClaims: Claim[];
+  kpiRuns: AdjResult[];
+}
+
 export default function ClaimsWorkbench() {
   const { claimId: routeClaimId } = useParams<{ claimId?: string }>();
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
   const [claims, setClaims] = useState<Claim[]>([]);
+  const [totalClaims, setTotalClaims] = useState(0);
+  const [pageRuns, setPageRuns] = useState<AdjResult[]>([]);
   const [cases, setCases] = useState<Case[]>([]);
   const [caseEvents, setCaseEvents] = useState<CaseEvent[]>([]);
   const [accumulators, setAccumulators] = useState<Record<string, MemberAccumulators>>({});
-  const [adjResults, setAdjResults] = useState<AdjResult[]>([]);
+  const [claimCounts, setClaimCounts] = useState({ total: 0, needsReview: 0 });
+  const [kpiClaims, setKpiClaims] = useState<Claim[]>([]);
+  const [kpiRuns, setKpiRuns] = useState<AdjResult[]>([]);
   const [liveContract, setLiveContract] = useState<ContractTerms | null>(null);
   const [livePlan, setLivePlan] = useState<PlanBenefits | null>(null);
+  const [deepLinked, setDeepLinked] = useState<{ claim: Claim; result: AdjResult | null } | null>(null);
+
+  // Page-independent data (cases, accumulators, the KPI sample) loads once
+  // no matter how many times `page` changes -- the promise is cached so a
+  // page change never re-triggers seedIfEmpty() or the KPI sample fetch.
+  const bootstrapRef = useRef<Promise<Bootstrap> | null>(null);
+  function ensureBootstrap(): Promise<Bootstrap> {
+    if (!bootstrapRef.current) {
+      bootstrapRef.current = (async () => {
+        await seedIfEmpty();
+        const [k, e, a, counts, sampleRuns] = await Promise.all([
+          loadCases(), loadCaseEvents(), loadAccumulators(), getClaimCounts(), loadRecentRunsForKpis(),
+        ]);
+        const sampleClaims = await loadClaimsByIds(sampleRuns.map(r => r.claimId));
+        return { cases: k, caseEvents: e, accumulators: a, claimCounts: counts, kpiClaims: sampleClaims, kpiRuns: sampleRuns };
+      })();
+    }
+    return bootstrapRef.current;
+  }
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      setLoading(true);
       try {
-        await seedIfEmpty();
-        const [c, k, e, a, runs] = await Promise.all([
-          loadClaims(), loadCases(), loadCaseEvents(), loadAccumulators(), loadLatestRuns(),
-        ]);
+        const boot = await ensureBootstrap();
         if (cancelled) return;
-        setClaims(c); setCases(k); setCaseEvents(e); setAccumulators(a);
+        setCases(boot.cases); setCaseEvents(boot.caseEvents); setAccumulators(boot.accumulators);
+        setClaimCounts(boot.claimCounts); setKpiClaims(boot.kpiClaims); setKpiRuns(boot.kpiRuns);
+
+        const { claims: c, total } = await loadClaimsPage({ limit: PAGE_SIZE, offset: page * PAGE_SIZE });
+        if (cancelled) return;
+        setClaims(c); setTotalClaims(total);
         resetIdCounter();
-        const haveRun = new Set(runs.map(r => r.claimId));
+
+        const existingRuns = await loadRunsForClaims(c.map(cl => cl.claim_id));
+        if (cancelled) return;
+        const haveRun = new Set(existingRuns.map(r => r.claimId));
         const fresh: AdjResult[] = [];
         for (const claim of c) {
           if (haveRun.has(claim.claim_id)) continue;
-          const acc = a[claim.member_id] ?? Object.values(a)[0];
+          const acc = boot.accumulators[claim.member_id] ?? Object.values(boot.accumulators)[0];
           if (!acc) continue;
 
           // Outside demo mode, only adjudicate against real, admin-entered
@@ -147,7 +196,8 @@ export default function ClaimsWorkbench() {
           fresh.push({ claimId: claim.claim_id, run, trace });
           await saveAdjudication(claim.claim_id, run, trace, false);
         }
-        setAdjResults([...runs, ...fresh]);
+        if (cancelled) return;
+        setPageRuns([...existingRuns, ...fresh]);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err));
       } finally {
@@ -155,18 +205,34 @@ export default function ClaimsWorkbench() {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [page]);
 
   // Deep link support (/claims/:claimId) -- e.g. from Payer Findings or
-  // Contract Recovery, so clicking a finding opens the real claim record.
+  // Contract Recovery. If the claim isn't on the current page, fetch it
+  // directly rather than requiring the user to page to wherever it falls.
   useEffect(() => {
-    if (routeClaimId && claims.some(c => c.claim_id === routeClaimId)) {
+    if (!routeClaimId) { setDeepLinked(null); return; }
+    if (claims.some(c => c.claim_id === routeClaimId)) {
       setSelectedClaimId(routeClaimId);
+      setDeepLinked(null);
+      return;
     }
+    let cancelled = false;
+    (async () => {
+      const claim = await loadClaimById(routeClaimId);
+      if (cancelled || !claim) return;
+      const runs = await loadRunsForClaims([routeClaimId]);
+      if (cancelled) return;
+      setDeepLinked({ claim, result: runs[0] ?? null });
+      setSelectedClaimId(routeClaimId);
+    })();
+    return () => { cancelled = true; };
   }, [routeClaimId, claims]);
 
-  const selectedResult = adjResults.find(r => r.claimId === selectedClaimId);
-  const selectedClaim = claims.find(c => c.claim_id === selectedClaimId);
+  const selectedClaim = claims.find(c => c.claim_id === selectedClaimId)
+    ?? (deepLinked?.claim.claim_id === selectedClaimId ? deepLinked.claim : undefined);
+  const selectedResult = pageRuns.find(r => r.claimId === selectedClaimId)
+    ?? (deepLinked?.claim.claim_id === selectedClaimId ? deepLinked.result ?? undefined : undefined);
   const selectedCase = useMemo(() => {
     if (!selectedClaim) return null;
     if (selectedClaim.case_id) return cases.find(c => c.case_id === selectedClaim.case_id) ?? null;
@@ -197,6 +263,8 @@ export default function ClaimsWorkbench() {
     return () => { cancelled = true; };
   }, [selectedClaim?.claim_id, selectedClaim?.intel?.payer_name]);
 
+  const pageCount = Math.max(1, Math.ceil(totalClaims / PAGE_SIZE));
+
   return (
     <div className="flex flex-col h-full">
       <PageHeader
@@ -204,22 +272,49 @@ export default function ClaimsWorkbench() {
         subtitle="Deterministic adjudication · auditable decision path · COB transparency · payment waterfall · replayable trace."
       />
       {error && <div className="px-5 py-1.5 text-[11.5px] font-mono border-b text-destructive">Error: {error}</div>}
-      <ClaimOperationsKpis claims={claims} adjResults={adjResults} cases={cases} />
+      <ClaimOperationsKpis
+        totalCount={claimCounts.total}
+        needsReviewCount={claimCounts.needsReview}
+        kpiClaims={kpiClaims}
+        kpiRuns={kpiRuns}
+        cases={cases}
+      />
       {loading ? (
         <div className="flex-1 flex items-center justify-center text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading adjudication data…
         </div>
       ) : (
         <div className="flex-1 flex min-h-0 overflow-hidden">
-          <div className="w-[340px] shrink-0 border-r overflow-hidden">
-            <ClaimList claims={claims} adjResults={adjResults} selectedClaimId={selectedClaimId} onSelect={setSelectedClaimId} />
+          <div className="w-[340px] shrink-0 border-r overflow-hidden flex flex-col">
+            <div className="flex-1 min-h-0">
+              <ClaimList claims={claims} adjResults={pageRuns} selectedClaimId={selectedClaimId} onSelect={setSelectedClaimId} />
+            </div>
+            <div className="shrink-0 flex items-center justify-between gap-2 px-3 py-2 border-t bg-card text-[11.5px]">
+              <button
+                onClick={() => setPage(p => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className="h-7 w-7 rounded border bg-card hover:bg-muted disabled:opacity-40 flex items-center justify-center"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </button>
+              <span className="text-muted-foreground font-mono">
+                Page {page + 1} of {pageCount} · {totalClaims.toLocaleString()} claims
+              </span>
+              <button
+                onClick={() => setPage(p => Math.min(pageCount - 1, p + 1))}
+                disabled={page >= pageCount - 1}
+                className="h-7 w-7 rounded border bg-card hover:bg-muted disabled:opacity-40 flex items-center justify-center"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
           <div className="flex-1 min-w-0 overflow-hidden">
             {selectedResult && selectedClaim ? (
               <ClaimWorkspace
                 claim={selectedClaim} result={selectedResult}
                 caseData={selectedCase} caseEvents={selectedCaseEvents}
-                claims={claims} adjResults={adjResults} accumulators={accumulators}
+                claims={claims} adjResults={pageRuns} accumulators={accumulators}
                 contract={isDemoModeEnabled() ? demoContract : (liveContract ?? LIVE_CONTRACT)}
                 plan={isDemoModeEnabled() ? demoPlan : (livePlan ?? LIVE_PLAN)}
                 priorOutcomes={isDemoModeEnabled() ? demoPriorOutcomes : []}

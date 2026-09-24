@@ -2,6 +2,14 @@
  * Claim Operations dashboard KPIs — enterprise-grade summary across the
  * Claim Clarity adjudication queue. Presentation only; derives from the
  * existing AdjudicationRun + Claim shapes without altering engine output.
+ *
+ * `totalCount`/`needsReviewCount` are real org-wide counts (cheap SQL
+ * COUNTs, independent of pagination). The other tiles need a claim's
+ * status *and* its run together, which pagination can't give cheaply
+ * without a dedicated SQL aggregate -- so `kpiClaims`/`kpiRuns` are a
+ * bounded, recent, org-wide *sample* (see loadRecentRunsForKpis), not
+ * the current page and not an audit-grade total. Real for the volumes
+ * this app runs at today; documented rather than silently exact.
  */
 import type { Claim, AdjudicationRun } from '@/types/claim';
 import type { TraceObject } from '@/types/trace';
@@ -14,8 +22,10 @@ interface AdjResult {
 }
 
 interface Props {
-  claims: Claim[];
-  adjResults: AdjResult[];
+  totalCount: number;
+  needsReviewCount: number;
+  kpiClaims: Claim[];
+  kpiRuns: AdjResult[];
   cases: Case[];
 }
 
@@ -26,48 +36,37 @@ interface Tile {
   sub?: string;
 }
 
-export function ClaimOperationsKpis({ claims, adjResults, cases }: Props) {
-  const total = claims.length;
-  const linkedCaseIds = new Set<string>();
-  for (const c of claims) {
-    if (c.case_id) linkedCaseIds.add(c.case_id);
-  }
-  for (const k of cases) {
-    if (k.claim_ids.some(id => claims.find(c => c.claim_id === id))) linkedCaseIds.add(k.case_id);
-  }
+export function ClaimOperationsKpis({ totalCount, needsReviewCount, kpiClaims, kpiRuns, cases }: Props) {
+  const linkedCases = cases.filter(k => k.claim_ids.length > 0).length;
 
-  const autoAdjudicated = adjResults.filter(r => {
-    const claim = claims.find(c => c.claim_id === r.claimId);
+  const autoAdjudicated = kpiRuns.filter(r => {
+    const claim = kpiClaims.find(c => c.claim_id === r.claimId);
     if (!claim) return false;
     if (claim.status !== 'PAID' && claim.status !== 'ADJUDICATED') return false;
     return r.run.line_results.every(lr => lr.status !== 'denied');
   }).length;
 
-  const needsReview = claims.filter(c =>
-    c.status === 'PENDED' || c.status === 'IN_ADJUDICATION' || c.status === 'AWAITING_PRIMARY_EOB',
-  ).length;
-
-  const cobConflicts = adjResults.filter(r =>
+  const cobConflicts = kpiRuns.filter(r =>
     r.run.line_results.some(lr => lr.cob_allocations.length > 0),
   ).length;
 
-  const appealReady = claims.filter(c => {
+  const appealReady = kpiClaims.filter(c => {
     if (c.status !== 'DENIED') return false;
-    const r = adjResults.find(x => x.claimId === c.claim_id);
+    const r = kpiRuns.find(x => x.claimId === c.claim_id);
     return !!r && r.trace.rule_firings.length > 0 && r.trace.math_steps.length > 0;
   }).length;
 
-  const traceCoverage = total === 0 ? 0 : Math.round((adjResults.length / total) * 100);
+  const traceCoverage = kpiClaims.length === 0 ? 0 : Math.round((kpiRuns.length / kpiClaims.length) * 100);
 
   const tiles: Tile[] = [
-    { label: 'Claims Processed', value: total.toLocaleString() },
-    { label: 'Cases Linked', value: linkedCaseIds.size.toLocaleString(), sub: 'N→1 case grouping' },
-    { label: 'Auto-Adjudicated', value: autoAdjudicated.toLocaleString(), tone: 'amount-positive' },
-    { label: 'Needs Review', value: needsReview.toLocaleString(), tone: needsReview ? 'text-status-pending' : '' },
-    { label: 'COB Conflicts', value: cobConflicts.toLocaleString(), tone: cobConflicts ? 'text-status-cob' : '' },
-    { label: 'Appeal-Ready', value: appealReady.toLocaleString(), tone: appealReady ? 'text-status-denied' : '' },
+    { label: 'Claims Processed', value: totalCount.toLocaleString() },
+    { label: 'Cases Linked', value: linkedCases.toLocaleString(), sub: 'N→1 case grouping' },
+    { label: 'Auto-Adjudicated', value: autoAdjudicated.toLocaleString(), tone: 'amount-positive', sub: 'recent sample' },
+    { label: 'Needs Review', value: needsReviewCount.toLocaleString(), tone: needsReviewCount ? 'text-status-pending' : '' },
+    { label: 'COB Conflicts', value: cobConflicts.toLocaleString(), tone: cobConflicts ? 'text-status-cob' : '', sub: 'recent sample' },
+    { label: 'Appeal-Ready', value: appealReady.toLocaleString(), tone: appealReady ? 'text-status-denied' : '', sub: 'recent sample' },
     { label: 'Avg Processing', value: 'Insufficient History', sub: 'awaiting volume' },
-    { label: 'Trace Coverage', value: `${traceCoverage}%`, tone: traceCoverage === 100 ? 'amount-positive' : '', sub: 'replayable decisions' },
+    { label: 'Trace Coverage', value: `${traceCoverage}%`, tone: traceCoverage === 100 ? 'amount-positive' : '', sub: 'recent sample' },
   ];
 
   return (

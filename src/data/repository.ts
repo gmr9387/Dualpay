@@ -41,6 +41,55 @@ export async function loadClaims(): Promise<Claim[]> {
   return (data ?? []).map((r) => r.payload as unknown as Claim);
 }
 
+/**
+ * Paginated claims fetch for Claims Workbench. loadClaims() above stays
+ * unbounded because use-clarity-data.ts (the Claim Clarity ops/analytics
+ * layer) genuinely needs every claim for the org -- this is additive, not
+ * a replacement. `count: 'exact'` costs an index-scan count on org_id
+ * (fast; proven under load test) so the page can show "N of M" without a
+ * second round trip.
+ */
+export async function loadClaimsPage(opts: { limit: number; offset: number }): Promise<{ claims: Claim[]; total: number }> {
+  const { data, error, count } = await supabase
+    .from('claims')
+    .select('payload', { count: 'exact' })
+    .order('service_date_from', { ascending: true })
+    .range(opts.offset, opts.offset + opts.limit - 1);
+  if (error) throw error;
+  return { claims: (data ?? []).map((r) => r.payload as unknown as Claim), total: count ?? 0 };
+}
+
+/** Single claim by ID, for deep links (e.g. /claims/:id from Payer
+ * Findings) that land on a claim not present on the current page. */
+export async function loadClaimById(claimId: string): Promise<Claim | null> {
+  const { data, error } = await supabase.from('claims').select('payload').eq('claim_id', claimId).maybeSingle();
+  if (error) throw error;
+  return data ? (data.payload as unknown as Claim) : null;
+}
+
+/** Claims for a specific, bounded set of IDs -- pairs with
+ * loadRecentRunsForKpis() so the KPI tiles that need claim.status (not
+ * just the run) have the matching claim records without loading the org. */
+export async function loadClaimsByIds(claimIds: string[]): Promise<Claim[]> {
+  if (claimIds.length === 0) return [];
+  const { data, error } = await supabase.from('claims').select('payload').in('claim_id', claimIds);
+  if (error) throw error;
+  return (data ?? []).map((r) => r.payload as unknown as Claim);
+}
+
+/** Real org-wide counts for the KPI strip, independent of which page of
+ * claims is currently loaded. Cheap: both are index-scan counts. */
+export async function getClaimCounts(): Promise<{ total: number; needsReview: number }> {
+  const [totalRes, reviewRes] = await Promise.all([
+    supabase.from('claims').select('claim_id', { count: 'exact', head: true }),
+    supabase.from('claims').select('claim_id', { count: 'exact', head: true })
+      .in('status', ['PENDED', 'IN_ADJUDICATION', 'AWAITING_PRIMARY_EOB']),
+  ]);
+  if (totalRes.error) throw totalRes.error;
+  if (reviewRes.error) throw reviewRes.error;
+  return { total: totalRes.count ?? 0, needsReview: reviewRes.count ?? 0 };
+}
+
 export async function loadCases(): Promise<Case[]> {
   const { data: cases, error: e1 } = await supabase
     .from('cases')
@@ -106,16 +155,14 @@ export interface PersistedRun {
   trace: TraceObject;
 }
 
-export async function loadLatestRuns(): Promise<PersistedRun[]> {
-  const { data: runs, error } = await supabase
-    .from('adjudication_runs')
-    .select('run_id, claim_id, payload, created_at')
-    .order('created_at', { ascending: false });
-  if (error) throw error;
+type RawRun = { run_id: string; claim_id: string; payload: unknown; created_at: string };
 
-  // Pick the latest run per claim
-  const latestByClaim = new Map<string, { run_id: string; claim_id: string; payload: unknown }>();
-  for (const r of runs ?? []) {
+/** Shared by every loadLatestRuns* variant below: dedupe to the latest run
+ * per claim, then join its trace. Pulled out so the bounded variants don't
+ * re-implement this. */
+async function buildLatestRuns(runs: RawRun[]): Promise<PersistedRun[]> {
+  const latestByClaim = new Map<string, RawRun>();
+  for (const r of runs) {
     if (!latestByClaim.has(r.claim_id)) {
       latestByClaim.set(r.claim_id, r);
     }
@@ -146,6 +193,52 @@ export async function loadLatestRuns(): Promise<PersistedRun[]> {
     });
   }
   return out;
+}
+
+/** Unbounded -- every run for every claim in the org. Kept for
+ * use-clarity-data.ts, which genuinely needs the whole set for its
+ * org-wide analytics. Not used by the paginated Claims Workbench. */
+export async function loadLatestRuns(): Promise<PersistedRun[]> {
+  const { data: runs, error } = await supabase
+    .from('adjudication_runs')
+    .select('run_id, claim_id, payload, created_at')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return buildLatestRuns(runs ?? []);
+}
+
+/** Runs for a specific, bounded set of claim IDs -- the per-row
+ * adjudication display for one page of Claims Workbench. */
+export async function loadRunsForClaims(claimIds: string[]): Promise<PersistedRun[]> {
+  if (claimIds.length === 0) return [];
+  const { data: runs, error } = await supabase
+    .from('adjudication_runs')
+    .select('run_id, claim_id, payload, created_at')
+    .in('claim_id', claimIds)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return buildLatestRuns(runs ?? []);
+}
+
+/**
+ * Bounded, recent sample of runs org-wide, independent of which claims
+ * page is currently loaded -- feeds the KPI tiles (Auto-Adjudicated, COB
+ * Conflicts, Appeal-Ready, Trace Coverage) that need a representative
+ * signal across the org, not just the visible page. This is a sample,
+ * not an audit-grade total: at real scale a proper SQL aggregate would
+ * replace it, but for the volumes this app runs at today it's a real,
+ * bounded, honest number instead of either "everything" (the capacity
+ * problem this pagination work exists to fix) or a silently page-scoped
+ * one that would misrepresent the org.
+ */
+export async function loadRecentRunsForKpis(limit = 1000): Promise<PersistedRun[]> {
+  const { data: runs, error } = await supabase
+    .from('adjudication_runs')
+    .select('run_id, claim_id, payload, created_at')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return buildLatestRuns(runs ?? []);
 }
 
 // ── Writers ───────────────────────────────────────────────────
