@@ -12,6 +12,10 @@
  */
 import { Link } from 'react-router-dom';
 import { Shield, ArrowRight, FileCheck, Search, RotateCcw } from 'lucide-react';
+import heroClinician from '@/assets/marketing/hero-clinician.jpg';
+import invoiceDetail from '@/assets/marketing/invoice-detail.jpg';
+import providerDesk from '@/assets/marketing/provider-desk.jpg';
+import documentReview from '@/assets/marketing/document-review.jpg';
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
@@ -58,22 +62,33 @@ export default function Welcome() {
       </header>
 
       {/* Hero */}
-      <section className="max-w-6xl mx-auto px-6 pt-20 pb-16 text-center">
-        <Eyebrow>Healthcare Revenue &amp; Payment Intelligence</Eyebrow>
-        <h1 className="font-display text-[44px] sm:text-[56px] font-semibold tracking-tight leading-[1.05] max-w-3xl mx-auto">
-          One platform. Both sides of the claim.
-        </h1>
-        <p className="mt-5 text-[16px] text-muted-foreground max-w-xl mx-auto leading-relaxed">
-          Deterministic claims adjudication, coordination of benefits, and contract-driven
-          variance detection — built to recover what a provider is owed, and to catch what
-          a payer overpaid, from the same engine.
-        </p>
-        <div className="mt-8 flex items-center justify-center gap-3">
-          <Link to="/login" className="h-11 px-6 inline-flex items-center gap-2 rounded-md bg-primary text-primary-foreground text-[14px] font-medium hover:bg-primary/90">
-            Sign in <ArrowRight className="h-4 w-4" />
-          </Link>
+      <section className="max-w-6xl mx-auto px-6 pt-16 pb-16 grid lg:grid-cols-[1.05fr_0.95fr] gap-12 items-center">
+        <div>
+          <Eyebrow>Healthcare Revenue &amp; Payment Intelligence</Eyebrow>
+          <h1 className="font-display text-[42px] sm:text-[52px] font-semibold tracking-tight leading-[1.05]">
+            One platform. Both sides of the claim.
+          </h1>
+          <p className="mt-5 text-[16px] text-muted-foreground max-w-lg leading-relaxed">
+            Deterministic claims adjudication, coordination of benefits, and contract-driven
+            variance detection — built to recover what a provider is owed, and to catch what
+            a payer overpaid, from the same engine.
+          </p>
+          <div className="mt-8 flex items-center gap-3">
+            <Link to="/login" className="h-11 px-6 inline-flex items-center gap-2 rounded-md bg-primary text-primary-foreground text-[14px] font-medium hover:bg-primary/90">
+              Sign in <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+          <p className="mt-4 text-[12px] text-muted-foreground/70">Access is invite-only. Contact your administrator to be added.</p>
         </div>
-        <p className="mt-4 text-[12px] text-muted-foreground/70">Access is invite-only. Contact your administrator to be added.</p>
+        <div className="relative">
+          <div className="rounded-2xl overflow-hidden border shadow-xl aspect-[4/5] lg:aspect-[3/4]">
+            <img src={heroClinician} alt="Clinician reviewing claims on a laptop" className="w-full h-full object-cover" />
+          </div>
+          <div className="absolute -bottom-5 -left-5 rounded-lg bg-card border shadow-lg px-4 py-3 hidden sm:block">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Replay check</div>
+            <div className="font-display text-[15px] font-semibold text-primary">Match — every run</div>
+          </div>
+        </div>
       </section>
 
       {/* Capability facts strip -- real, verifiable properties, not results */}
@@ -99,7 +114,7 @@ export default function Welcome() {
         <h2 className="font-display text-[30px] font-semibold tracking-tight max-w-lg">
           Built for both sides of the claim
         </h2>
-        <div className="mt-10 grid sm:grid-cols-2 gap-5">
+        <div className="mt-10 grid lg:grid-cols-[0.85fr_0.85fr_1fr] gap-5">
           <div className="rounded-xl border bg-card p-6">
             <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center mb-4">
               <FileCheck className="h-5 w-5 text-primary" />
@@ -122,6 +137,34 @@ export default function Welcome() {
               from the same 835 import.
             </p>
           </div>
+          <div className="relative rounded-xl overflow-hidden border shadow-sm min-h-[220px]">
+            <img src={providerDesk} alt="Provider reviewing claims at their desk" className="w-full h-full object-cover absolute inset-0" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[hsl(150_45%_10%)]/90 via-[hsl(150_45%_10%)]/10 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 p-5">
+              <div className="text-white text-[13.5px] font-medium leading-snug">
+                Built for the people who reconcile these claims every day —
+                not just the dashboards above them.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Precision / audit trail band */}
+      <section className="max-w-6xl mx-auto px-6 py-16 grid md:grid-cols-2 gap-12 items-center">
+        <div className="rounded-2xl overflow-hidden border shadow-xl aspect-[4/3]">
+          <img src={invoiceDetail} alt="Close-up of a claim and remittance being reviewed line by line" className="w-full h-full object-cover" />
+        </div>
+        <div>
+          <Eyebrow>Line-Level Precision</Eyebrow>
+          <h3 className="font-display text-[26px] font-semibold tracking-tight leading-tight">
+            Every line, matched back to the number that governs it
+          </h3>
+          <p className="mt-4 text-[14px] text-muted-foreground leading-relaxed">
+            No variance is flagged without a citation. Each finding traces to the exact
+            contract clause, fee-schedule row, or plan rule that produced it — so a
+            reviewer can verify a result in seconds, not re-derive it from scratch.
+          </p>
         </div>
       </section>
 
@@ -210,6 +253,24 @@ export default function Welcome() {
             </div>
           </MockCard>
         </MockPanel>
+      </section>
+
+      {/* Full-width photo band */}
+      <section className="relative mx-6 mb-16 rounded-2xl overflow-hidden">
+        <img src={documentReview} alt="Team reviewing claim documentation together" className="w-full h-[320px] object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[hsl(150_45%_8%)]/85 via-[hsl(150_45%_8%)]/40 to-transparent" />
+        <div className="absolute inset-0 flex items-center">
+          <div className="px-8 sm:px-14 max-w-md">
+            <h3 className="font-display text-white text-[24px] sm:text-[28px] font-semibold tracking-tight leading-tight">
+              One record, both sides of the review
+            </h3>
+            <p className="mt-3 text-[13.5px] text-white/80 leading-relaxed">
+              Provider recovery and payer payment integrity teams work from the same
+              claim, the same contract, and the same audit trail — no reconciling
+              two systems after the fact.
+            </p>
+          </div>
+        </div>
       </section>
 
       {/* Final CTA */}
