@@ -51,7 +51,7 @@ export default function Welcome() {
             <div className="h-8 w-8 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center">
               <Shield className="h-4 w-4 text-primary" />
             </div>
-            <span className="font-display font-bold text-[16px] tracking-tight">Claim Clarity</span>
+            <span className="font-display font-bold text-[16px] tracking-tight">DualPay</span>
           </div>
           <Link to="/login" className="h-9 px-4 inline-flex items-center gap-1.5 rounded-md bg-primary text-primary-foreground text-[13px] font-medium hover:bg-primary/90">
             Sign in <ArrowRight className="h-3.5 w-3.5" />
@@ -261,7 +261,7 @@ export default function Welcome() {
 
       <footer className="border-t">
         <div className="max-w-6xl mx-auto px-6 py-8 flex items-center justify-between text-[12px] text-muted-foreground">
-          <span>Claim Clarity</span>
+          <span>DualPay</span>
           <Link to="/login" className="hover:text-foreground">Sign in</Link>
         </div>
       </footer>
