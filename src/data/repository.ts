@@ -28,6 +28,7 @@ import {
   clarityClaims,
   clarityAccumulators,
 } from './clarity-scenarios';
+import { seedPayerFindingsDemo } from './demo-payer-findings';
 
 // ── Loaders ───────────────────────────────────────────────────
 
@@ -491,6 +492,15 @@ export async function seedIfEmpty(): Promise<{ seeded: boolean; org_id?: string 
   }
   for (const evt of demoCaseEvents) {
     await saveCaseEvent(evt, demoOrgId);
+  }
+
+  // 4. Payer-side demo data (Payer Findings) — isolated try/catch so a
+  // failure here never blocks the provider-side seed above, which already
+  // succeeded by this point.
+  try {
+    await seedPayerFindingsDemo(demoOrgId, saveClaim);
+  } catch (e) {
+    console.error('[repository] seedPayerFindingsDemo failed', e);
   }
 
   return { seeded: true, org_id: demoOrgId };
