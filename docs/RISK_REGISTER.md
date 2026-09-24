@@ -12,7 +12,7 @@
 | # | Risk | Likelihood | Impact | Mitigation | Owner | Status |
 |---|---|---|---|---|---|---|
 | 1 | Cross-tenant data leakage via missing/incorrect RLS policy on a new table | Medium | High | Migration template mandates `ENABLE RLS` + `org_id` policies; `AdminSecurity` mirrors live inventory; PR checklist item; nightly Supabase linter | Eng | Mitigating |
-| 2 | RLS bypass through `SECURITY DEFINER` function granted to `authenticated` | Medium | High | Restrict `EXECUTE` on `claim_next_queue_job` / `recover_stalled_queue_jobs` to `service_role`; audit all definer functions quarterly | Security | Open |
+| 2 | RLS bypass through `SECURITY DEFINER` function granted to `authenticated` | Medium | High | `claim_next_queue_job` / `recover_stalled_queue_jobs` confirmed `service_role`-only via `has_function_privilege` (from `harden_public_rpc_surface` migration); all other dualpay definer functions checked, none over-granted | Security | Closed |
 | 3 | Storage object accessed cross-org via forged path | Low | High | Storage RLS gates `org_id/` prefix via `is_org_member`; root uploads blocked | Eng | Closed |
 | 4 | Signed URL for `evidence-documents` leaked and reused | Medium | High | Short-lived signed URLs; audit `document_uploaded` / `document_linked` ops events; rotate signing keys quarterly | SRE | Mitigating |
 | 5 | Session token theft from browser `localStorage` (XSS) | Medium | High | Strict CSP; no `dangerouslySetInnerHTML`; input sanitization; token TTL + refresh rotation | Eng | Mitigating |
@@ -105,8 +105,8 @@
 | 91 | No documented risk analysis (§164.308(a)(1)(ii)(A)) | High | High | Complete formal Security Risk Analysis; refresh annually | Compliance | Open |
 | 92 | Session fixation on OAuth callback | Low | Medium | Supabase rotates session on OAuth; state param validated | Eng | Closed |
 | 93 | Open redirect on `?from=` query param at login | Low | Medium | Validate redirect target is same-origin path; reject external URLs | Eng | Mitigating |
-| 94 | Clickjacking on admin routes | Low | Low | `X-Frame-Options: DENY` / CSP `frame-ancestors 'none'` | Eng | Open |
-| 95 | Missing security headers (HSTS, CSP, Referrer-Policy) | Medium | Medium | Add via hosting config; verify with securityheaders.com | Eng | Open |
+| 94 | Clickjacking on admin routes | Low | Low | `X-Frame-Options: DENY` / CSP `frame-ancestors 'none'` set as real HTTP headers in `vercel.json` (the prior `<meta>`-delivered CSP's `frame-ancestors` was a silent no-op -- that directive is explicitly excluded from meta-delivered CSP by spec, so clickjacking protection never actually took effect) | Eng | Closed |
+| 95 | Missing security headers (HSTS, CSP, Referrer-Policy) | Medium | Medium | Added CSP, HSTS, X-Content-Type-Options, Referrer-Policy, X-Frame-Options, Permissions-Policy via `vercel.json`; also fixed CSP `style-src`/`font-src` to allow `fonts.googleapis.com`/`fonts.gstatic.com`, which had been silently blocking the app's Google Fonts | Eng | Closed |
 | 96 | Verbose error messages leak schema / stack | Medium | Low | Generic client errors; detailed logs server-side only | Eng | Mitigating |
 | 97 | Test/dev seed data contains real names | Medium | Medium | Replace with faker-generated synthetic data | Data | Open |
 | 98 | Backup export not encrypted before off-cloud transfer | Low | High | Any ad-hoc export encrypted with age/GPG; documented custodian | SRE | Open |
@@ -118,7 +118,7 @@
 ## Summary
 
 - **Total risks:** 101
-- **Open:** 45 · **Mitigating:** 33 · **Closed:** 23
+- **Open:** 42 · **Mitigating:** 33 · **Closed:** 26
 - **Top themes (by count of Open + Mitigating):** governance & policy gaps (retention, IR runbook, officer designations, workforce training), audit-log completeness, MFA/HIBP, vendor/BAA management, and DR rehearsal.
 
 ## Cross-references

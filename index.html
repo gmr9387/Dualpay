@@ -9,36 +9,13 @@
     <meta name="robots" content="noindex, nofollow" />
 
     <!--
-      Content Security Policy — hardens against XSS, which is the primary
-      attack vector for stealing the Supabase session token stored in
-      localStorage (HIPAA Risk #5 / OWASP A03).
-
-      Directives explained:
-        default-src 'self'       — block everything not explicitly allowed
-        script-src  'self' 'unsafe-inline' — Vite injects inline module bootstrapper;
-                                   tighten to a nonce-based policy once server-side
-                                   rendering or a CDN is introduced
-        style-src   'self' 'unsafe-inline' — Tailwind / shadcn emit inline styles
-        connect-src 'self' https://*.supabase.co wss://*.supabase.co
-                                   — Supabase REST + realtime WebSocket
-        img-src     'self' data:  — data URIs used by chart components
-        font-src    'self'
-        object-src  'none'        — block Flash / legacy plugins
-        frame-ancestors 'none'    — equivalent to X-Frame-Options: DENY (clickjacking)
-        base-uri    'self'        — prevent base-tag injection
-        form-action 'self'        — restrict form submissions
+      Content-Security-Policy (and the other security headers) are set as
+      real HTTP response headers in vercel.json, not here. frame-ancestors
+      -- the directive that actually blocks clickjacking -- is explicitly
+      excluded from meta-delivered CSP by spec, so it only takes effect as
+      a real header; a <meta> CSP here would silently no-op that directive
+      while also drifting out of sync with vercel.json's policy.
     -->
-    <meta http-equiv="Content-Security-Policy"
-      content="default-src 'self';
-               script-src 'self' 'unsafe-inline';
-               style-src 'self' 'unsafe-inline';
-               connect-src 'self' https://*.supabase.co wss://*.supabase.co;
-               img-src 'self' data:;
-               font-src 'self';
-               object-src 'none';
-               frame-ancestors 'none';
-               base-uri 'self';
-               form-action 'self';" />
 
     <meta property="og:title" content="DualPay" />
     <meta property="og:description" content="Claims adjudication and denial recovery platform." />
