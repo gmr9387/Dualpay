@@ -34,7 +34,7 @@ export default function Login() {
             <Shield className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <div className="text-sm font-bold">Claim Clarity</div>
+            <div className="text-sm font-bold">DualPay</div>
             <div className="text-[11px] text-muted-foreground font-mono">Sign in to continue</div>
           </div>
         </div>
