@@ -13,6 +13,7 @@
  * new metric invented for this page.
  */
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useDisputes } from '@/hooks/use-contracts';
 import { useRemittanceBatches } from '@/hooks/use-remittance-batches';
 import { updateDisputeStatus } from '@/lib/contracts';
@@ -20,7 +21,7 @@ import { formatCents, formatCentsCompact } from '@/hooks/use-clarity-data';
 import { PageHeader, KpiStrip, ScrollBody, Panel, EmptyState } from '@/components/clarity/primitives';
 import { can } from '@/lib/role-permissions';
 import { useOrg } from '@/hooks/use-org';
-import { Search } from 'lucide-react';
+import { Search, FileText } from 'lucide-react';
 
 const SEVERITY_TONE: Record<string, string> = {
   critical: 'bg-status-denied/15 text-status-denied border-status-denied/30',
@@ -112,8 +113,16 @@ export default function PayerFindings() {
                   <tbody>
                     {visible.map(d => (
                       <tr key={d.dispute_id} className="border-b hover:bg-muted/30 align-top">
-                        <td className="p-2 font-mono">{d.claim_id}</td>
-                        <td className="p-2">{d.payer_name}</td>
+                        <td className="p-2 font-mono">
+                          <Link to={`/claims/${d.claim_id}`} className="text-primary hover:underline">{d.claim_id}</Link>
+                        </td>
+                        <td className="p-2">
+                          {d.contract_id ? (
+                            <Link to={`/contracts/${d.contract_id}`} className="inline-flex items-center gap-1 text-primary hover:underline" title="View the contract & fee schedule this finding was matched against">
+                              <FileText className="h-3 w-3" />{d.payer_name}
+                            </Link>
+                          ) : d.payer_name}
+                        </td>
                         <td className="p-2 font-mono">{d.procedure_code ?? '—'}</td>
                         <td className="p-2 text-right font-mono">{formatCents(d.expected_amount_cents)}</td>
                         <td className="p-2 text-right font-mono">{formatCents(d.paid_amount_cents)}</td>

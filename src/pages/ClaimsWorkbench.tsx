@@ -4,6 +4,7 @@
  * for individual claims as a secondary surface to Claim Clarity.
  */
 import { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { resetIdCounter } from '@/engine/calculation-engine';
 import { executeAdjudicationWithReplay } from '@/engine/adjudication-orchestrator';
 import { adjudicateViaNucleus } from '@/engine/nucleus-adjudication-client';
@@ -81,6 +82,7 @@ async function checkNucleusGate(claim: Claim): Promise<NucleusGateResult> {
 }
 
 export default function ClaimsWorkbench() {
+  const { claimId: routeClaimId } = useParams<{ claimId?: string }>();
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -154,6 +156,14 @@ export default function ClaimsWorkbench() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // Deep link support (/claims/:claimId) -- e.g. from Payer Findings or
+  // Contract Recovery, so clicking a finding opens the real claim record.
+  useEffect(() => {
+    if (routeClaimId && claims.some(c => c.claim_id === routeClaimId)) {
+      setSelectedClaimId(routeClaimId);
+    }
+  }, [routeClaimId, claims]);
 
   const selectedResult = adjResults.find(r => r.claimId === selectedClaimId);
   const selectedClaim = claims.find(c => c.claim_id === selectedClaimId);
