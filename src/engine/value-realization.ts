@@ -154,7 +154,7 @@ export function buildNarrative(
     delta = ` Recovery performance ${dir} by ${Math.abs(pct).toFixed(0)}% vs the previous period.`;
   }
 
-  return `In ${period} Claim Clarity tracked ${fmt(vr.total_at_risk_cents)} at risk and ` +
+  return `In ${period} DualPay tracked ${fmt(vr.total_at_risk_cents)} at risk and ` +
     `recovered ${fmt(current?.recovered_cents ?? 0)} against ${fmt(current?.denied_cents ?? 0)} in denials ` +
     `(${((current?.recovery_rate ?? 0) * 100).toFixed(0)}% recovery rate).${delta} ` +
     `Expected future recovery from open AR: ${fmt(vr.expected_future_recovery_cents)}.`;

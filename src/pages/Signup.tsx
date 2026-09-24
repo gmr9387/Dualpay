@@ -20,7 +20,7 @@ export default function Signup() {
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          Claim Clarity accounts are provisioned by your organization administrator.
+          DualPay accounts are provisioned by your organization administrator.
           Please contact them to receive an invitation.
         </p>
         <div className="mt-4 text-center text-xs text-muted-foreground">

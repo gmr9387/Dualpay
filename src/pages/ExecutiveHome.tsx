@@ -47,7 +47,7 @@ export default function ExecutiveHome() {
     <div className="flex flex-col h-full">
       <PageHeader
         title="Executive Intelligence"
-        subtitle="Value realized by Claim Clarity — recovery, leverage, and operational ROI."
+        subtitle="Value realized by DualPay — recovery, leverage, and operational ROI."
       />
       <KpiStrip tiles={[
         { label: 'Dollars At Risk',     value: formatCentsCompact(value.total_at_risk_cents),       tone: 'amount-negative' },
