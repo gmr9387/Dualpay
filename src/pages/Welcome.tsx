@@ -227,19 +227,22 @@ export default function Welcome() {
 
       {/* Full-width photo band */}
       <section className="relative mx-6 mb-16 rounded-2xl overflow-hidden">
-        <img src={documentReview} alt="Team reviewing claim documentation together" className="w-full h-[320px] object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[hsl(150_45%_8%)]/85 via-[hsl(150_45%_8%)]/40 to-transparent" />
-        <div className="absolute inset-0 flex items-center">
-          <div className="px-8 sm:px-14 max-w-md">
-            <h3 className="font-display text-white text-[24px] sm:text-[28px] font-semibold tracking-tight leading-tight">
-              One record, both sides of the review
-            </h3>
-            <p className="mt-3 text-[13.5px] text-white/80 leading-relaxed">
-              Provider recovery and payer payment integrity teams work from the same
-              claim, the same contract, and the same audit trail — no reconciling
-              two systems after the fact.
-            </p>
-          </div>
+        <img
+          src={documentReview}
+          alt="Team reviewing claim documentation together"
+          className="w-full h-[280px] sm:h-[360px] lg:h-[440px] object-cover"
+          style={{ objectPosition: '50% 13%' }}
+        />
+        <div className="absolute bottom-5 left-5 right-5 sm:bottom-8 sm:left-8 sm:right-auto sm:max-w-sm rounded-xl p-5 sm:p-6 shadow-xl"
+          style={{ background: 'hsl(150 45% 9% / 0.94)' }}>
+          <h3 className="font-display text-white text-[22px] sm:text-[26px] font-semibold tracking-tight leading-tight">
+            One record, both sides of the review
+          </h3>
+          <p className="mt-3 text-[13px] text-white/80 leading-relaxed">
+            Provider recovery and payer payment integrity teams work from the same
+            claim, the same contract, and the same audit trail — no reconciling
+            two systems after the fact.
+          </p>
         </div>
       </section>
 
