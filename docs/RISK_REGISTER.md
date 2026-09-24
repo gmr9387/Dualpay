@@ -79,7 +79,7 @@
 | 65 | CSV export unfiltered exposes bulk PHI | Medium | Medium | `AdminAudit.tsx`/`audit-export.ts` do gate by role, redact, audit-log, and cap rows (10k) -- but only when going through the app UI/function. The underlying `ops_events`/`recovery_outcomes`/`claim_assignments` SELECT policies allow any org member (viewer included) to read those rows directly via the Supabase client, so the admin-only "full/unredacted" restriction and audit-logging are bypassable by a low-privilege user calling the API directly. Fixing this properly means either a server-side export edge function enforcing role + logging, or auditing every legitimate lower-role read path against those tables before tightening their base RLS -- flagged for a scoped follow-up, not a quick patch | Eng | Mitigating |
 | 66 | Print/PDF generation renders more fields than intended | Low | Medium | Whitelist fields in `pdf-appeal`; review templates | Eng | Mitigating |
 | 67 | Uploaded file with malicious content (malware, macro) | Medium | Medium | MIME allow-list enforced in `EvidenceUploader`; add server-side AV scan | Security | Open |
-| 68 | Zip-bomb / oversized upload DoS | Low | Medium | File-size cap; timeout on upload; storage quota per org | Eng | Open |
+| 68 | Zip-bomb / oversized upload DoS | Low | Medium | `file_size_limit` + `allowed_mime_types` set server-side on both Storage buckets (25MB/evidence, 10MB/appeal-packets) -- enforced by Storage itself, not bypassable by a modified client request the way the prior client-only MIME check was. Found while fixing this: **both buckets didn't exist at all** in the post-consolidation nucleus-2 project (RLS policies referencing them had migrated correctly, the bucket rows hadn't), so evidence upload was fully broken in production; fixed in the same migration | Eng | Closed |
 | 69 | Trace hash function change breaks replay integrity | Low | High | Hash algorithm versioned in trace payload; migration path required for change | Eng | Mitigating |
 | 70 | Timezone/UTC drift causes DOS misalignment on claims | Low | Medium | All timestamps stored as `timestamptz`; UTC in payloads | Data | Closed |
 | 71 | ISO-4217 rounding regression causes penny drift | Low | High | Deterministic rounding in `calculation-engine`; unit tests | Eng | Closed |
@@ -118,7 +118,7 @@
 ## Summary
 
 - **Total risks:** 101
-- **Open:** 40 · **Mitigating:** 34 · **Closed:** 27
+- **Open:** 39 · **Mitigating:** 34 · **Closed:** 28
 - **Top themes (by count of Open + Mitigating):** governance & policy gaps (retention, IR runbook, officer designations, workforce training), audit-log completeness, MFA/HIBP, vendor/BAA management, and DR rehearsal.
 
 ## Cross-references
