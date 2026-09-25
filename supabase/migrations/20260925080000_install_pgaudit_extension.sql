@@ -1,0 +1,35 @@
+-- Risk #39 (docs/RISK_REGISTER.md): audit log gap for SELECT on PHI tables.
+-- Postgres does not log SELECT by default. pgaudit is the real fix for
+-- this -- it supports "object audit logging": grant SELECT on specific
+-- tables to a designated role (set via pgaudit.role), and any SELECT
+-- against those tables gets logged regardless of who runs it, without
+-- the noise (or PHI-in-logs risk) of logging every SELECT on every table.
+--
+-- This migration installs the extension, confirmed available in this
+-- Supabase project's catalog. It does NOT enable logging -- every
+-- pgaudit GUC (pgaudit.role, pgaudit.log, pgaudit.log_parameter, etc.)
+-- is `context: superuser` (confirmed live via pg_settings), and
+-- Supabase's managed `postgres` role is not a true Postgres superuser on
+-- this platform -- `ALTER DATABASE postgres SET pgaudit.role = ...`
+-- fails live with `42501: permission denied to set parameter
+-- "pgaudit.role"`. This is the same class of restriction already
+-- documented for risk #6/#7 (MFA enforcement toggle, HIBP leaked-password
+-- protection) -- no tool in this session's Supabase MCP surface can set
+-- a superuser-only GUC or reach Supabase's project-level dashboard
+-- settings. Completing this requires a human with dashboard or
+-- Management-API access to configure pgaudit's role-based object
+-- auditing (Database → Extensions → pgaudit in the Supabase dashboard,
+-- or the Management API's postgres-config endpoint), for example:
+--
+--   CREATE ROLE dualpay_phi_audit NOLOGIN;
+--   GRANT SELECT ON dualpay.claims, dualpay.member_accumulators,
+--     dualpay.evidence_documents, dualpay.cases,
+--     dualpay.appeal_recovery_cases TO dualpay_phi_audit;
+--   -- then, via the dashboard/Management API (not raw SQL):
+--   --   pgaudit.role = 'dualpay_phi_audit'
+--   --   pgaudit.log_parameter = off  (keep off -- avoids logging literal
+--   --     filter values, which could themselves contain PHI)
+--
+-- Once configured, SELECTs on those tables surface in Supabase's log
+-- platform, queryable via the project's log explorer / query_logs.
+create extension if not exists pgaudit;
