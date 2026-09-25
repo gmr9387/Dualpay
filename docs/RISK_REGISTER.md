@@ -23,8 +23,8 @@
 | 10 | JWT signing key rotation causes forced logout wave | Low | Medium | Documented rotation procedure; overlap window during rotation | SRE | Mitigating |
 | 11 | Publishable anon key mistaken for a secret and exposed | Low | Low | Naming + docs distinguish publishable vs service-role; service-role key never in repo | Eng | Closed |
 | 12 | Service-role key leaked via edge function log | Low | High | No secret echo in logs; edge function code reviewed; log scanning | SRE | Mitigating |
-| 13 | PHI written to `ops_events.summary` in free text | Medium | High | Code-review invariant; add CI regex scan on `summary`; structured payload only | Eng | Open |
-| 14 | PHI in browser console logs | Medium | Medium | Lint rule to ban `console.log(claim)` on PHI-bearing objects | Eng | Open |
+| 13 | PHI written to `ops_events.summary` in free text | Medium | High | `trg_ops_events_summary_no_phi` DB trigger rejects inserts whose `summary` matches SSN/member-ID/date patterns; confirmed live and enabled on nucleus-2 | Eng | Closed |
+| 14 | PHI in browser console logs | Medium | Medium | `eslint.config.js` sets `no-console: ["error", { allow: ["warn", "error"] }]`, explicitly citing this risk; confirmed enforced (repo lints clean under it) | Eng | Closed |
 | 15 | PHI cached in React Query beyond session | Low | Medium | In-memory only; cleared on logout; TTL on sensitive queries | Eng | Mitigating |
 | 16 | Deterministic adjudication regressions from silent config drift | Medium | High | Config-as-Code with version pins; SHA-256 trace fingerprints; replay verifier | Eng | Closed |
 | 17 | Duplicate payout via non-idempotent write | Medium | High | `idempotency_keys` table; canonical hashing; state machine guards | Eng | Closed |
@@ -118,7 +118,7 @@
 ## Summary
 
 - **Total risks:** 101
-- **Open:** 39 · **Mitigating:** 33 · **Closed:** 29
+- **Open:** 37 · **Mitigating:** 33 · **Closed:** 31
 - **Top themes (by count of Open + Mitigating):** governance & policy gaps (retention, IR runbook, officer designations, workforce training), audit-log completeness, MFA/HIBP, vendor/BAA management, and DR rehearsal.
 
 ## Cross-references
