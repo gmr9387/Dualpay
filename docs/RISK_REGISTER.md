@@ -112,13 +112,14 @@
 | 98 | Backup export not encrypted before off-cloud transfer | Low | High | Any ad-hoc export encrypted with age/GPG; documented custodian | SRE | Open |
 | 99 | No breach-notification runbook / template letters | Medium | High | Draft §164.404/§164.408 notification templates + escalation tree | Compliance | Open |
 | 100 | No independent SOC 2 audit / HIPAA attestation | High | High | Engage SOC 2 Type I in next 6 months; Type II thereafter | Compliance | Open |
+| 101 | `authenticated` role had zero table-level grants on 7 client-facing `dualpay` tables (`claims`, `adjudication_runs`, `cases`, `case_events`, `case_claim_links`, `member_accumulators`, `traces`) despite each having a full set of RLS policies -- every signed-in user hitting `ClaimsWorkbench`/`Index`/`AuditTrace` (all import `src/data/repository.ts`, which queries these tables directly) got a hard `permission denied for table X` error, not an RLS-filtered empty result. Root cause: the Supabase schema consolidation (`20260922`-era migrations moving dualpay into the shared `qrqekucwdfyqqzomuble` project) replicated table DDL and RLS policies but not the accompanying `GRANT` statements for these 7 tables specifically -- ~30 sibling tables kept theirs. Found while building an unrelated RLS integration test, confirmed live via `SET ROLE authenticated; SELECT ... FROM dualpay.claims;` before and after the fix | High | High | `20260925030000_grant_authenticated_missing_dualpay_tables.sql` grants SELECT/INSERT/UPDATE/DELETE to `authenticated` on all 7, matching their own policies and every sibling table's grant set; verified live post-fix (no error, correctly RLS-filtered to 0 rows with no identity set). `system_config` was the one other table missing these grants -- left alone, confirmed via grep that nothing in `src/` queries it client-side | Eng | Closed |
 
 ---
 
 ## Summary
 
-- **Total risks:** 101
-- **Open:** 36 · **Mitigating:** 34 · **Closed:** 31
+- **Total risks:** 102
+- **Open:** 36 · **Mitigating:** 34 · **Closed:** 32
 - **Top themes (by count of Open + Mitigating):** governance & policy gaps (retention, IR runbook, officer designations, workforce training), audit-log completeness, MFA/HIBP, vendor/BAA management, and DR rehearsal.
 
 ## Cross-references
