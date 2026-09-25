@@ -10,9 +10,21 @@ same server-boundary pattern `scheduler-dispatcher` already uses for
 This function returns HTTP 501 until both secrets are set:
 
 ```
-supabase secrets set NUCLEUS_ADJUDICATE_URL=https://bpqukcsaoporhvdtfyza.supabase.co/functions/v1/adjudicate-claim
+supabase secrets set NUCLEUS_ADJUDICATE_URL=https://qrqekucwdfyqqzomuble.supabase.co/functions/v1/adjudicate-claim
 supabase secrets set NUCLEUS_API_KEY=<the key nucleus issued for client_id "dualpay">
 ```
+
+Nucleus lives in the same Supabase project as DualPay now (post-consolidation --
+`qrqekucwdfyqqzomuble`, not the old standalone `bpqukcsaoporhvdtfyza`
+project), so this is a same-project HTTPS call, not a call to a
+separate deployment.
+
+To (re)issue the `NUCLEUS_API_KEY` value: call `manage-api-clients`
+with `{"action": "rotate", "client_id": "dualpay"}` as a signed-in
+owner/admin, or run the equivalent `UPDATE api_clients SET key_hash =
+sha256(...)` directly -- either way the raw key is returned/generated
+exactly once and is never stored in this repo or migration history in
+plaintext, only as its SHA-256 hash in `api_clients.key_hash`.
 
 `NUCLEUS_ADJUDICATE_URL` is named per-function deliberately: Supabase
 Edge Function secrets are project-wide, not scoped to a single

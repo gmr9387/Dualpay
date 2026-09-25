@@ -9,9 +9,14 @@ pattern as `nucleus-adjudicate` and `nucleus-weaver-score`.
 This function returns HTTP 501 until both secrets are set:
 
 ```
-supabase secrets set NUCLEUS_GUARDIAN_STATUS_URL=https://bpqukcsaoporhvdtfyza.supabase.co/functions/v1/guardian-status
+supabase secrets set NUCLEUS_GUARDIAN_STATUS_URL=https://qrqekucwdfyqqzomuble.supabase.co/functions/v1/guardian-status
 supabase secrets set NUCLEUS_API_KEY=<the key nucleus issued for client_id "dualpay">
 ```
+
+Nucleus lives in the same Supabase project as DualPay now (post-consolidation --
+`qrqekucwdfyqqzomuble`, not the old standalone `bpqukcsaoporhvdtfyza`
+project), so this is a same-project HTTPS call, not a call to a
+separate deployment.
 
 `NUCLEUS_GUARDIAN_STATUS_URL` is named per-function deliberately:
 Supabase Edge Function secrets are project-wide, not scoped to a
