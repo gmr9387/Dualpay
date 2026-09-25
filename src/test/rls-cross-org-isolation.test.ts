@@ -23,6 +23,19 @@
  * Full RLS proof requires executing as an `authenticated` role with a real
  * JWT.  The tests that MUST be added to a pgTAP / Supabase DB test suite are
  * marked with "LIVE DB REQUIRED" below.  They are not faked out here.
+ * As of docs/RISK_REGISTER.md risk #18/#102, this live proof now exists
+ * and passes against the real project (qrqekucwdfyqqzomuble): see
+ * supabase/tests/phase4a_database_security.pgtap.sql (claims SELECT/
+ * INSERT/UPDATE/DELETE cross-org denial, anon denial, RLS-enabled +
+ * policy-existence checks across job_queue/recovery_lineage_events/
+ * automation_jobs/underpayment_disputes/appeal_recovery_cases and 30+
+ * other dualpay tables) and supabase/tests/rls_security_verification.sql
+ * (payer_contracts, evidence_documents cross-org isolation). A live
+ * audit of all 41 dualpay tables' pg_policies confirmed every
+ * tenant-scoped table enforces isolation via is_org_member/has_org_role/
+ * org_has_no_members; the only tables without a chokepoint-referencing
+ * policy (scheduler_runs, worker_registry) have no org_id column at all
+ * and are legitimately platform-wide, not a leak.
  *
  * Tables covered in this pass
  * ---------------------------

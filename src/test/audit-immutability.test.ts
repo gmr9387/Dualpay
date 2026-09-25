@@ -27,6 +27,12 @@
  *   UPDATE ops_events SET summary = 'tampered' WHERE ... → must raise
  *   DELETE FROM ops_events WHERE ... → must raise
  *   INSERT INTO ops_events (...) VALUES (...) → must succeed
+ * As of docs/RISK_REGISTER.md risk #18/#102, this proof now exists and
+ * passes live: see supabase/tests/phase4a_database_security.pgtap.sql
+ * and supabase/tests/rls_security_verification.sql (both sections
+ * assert the append-only trigger blocks UPDATE/DELETE even for
+ * service_role, and that ordinary authenticated has no table-level
+ * UPDATE/DELETE grant at all).
  */
 
 import { describe, it, expect, vi } from 'vitest';

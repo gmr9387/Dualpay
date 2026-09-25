@@ -22,6 +22,10 @@
  * ----------------
  * Automated Storage tests cannot run without a live Supabase project.
  * The manual procedure is fully documented at the bottom of this file.
+ * As of docs/RISK_REGISTER.md risk #18/#102, the org-scoped-folder
+ * enforcement this file describes is now proven live: see
+ * supabase/tests/phase4a_database_security.pgtap.sql (Storage isolation
+ * section) and supabase/tests/rls_security_verification.sql (Section 7).
  *
  * MANUAL VERIFICATION PROCEDURE
  * --------------------------------

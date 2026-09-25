@@ -19,6 +19,13 @@
  *
  * LIVE DB REQUIRED — all live database tests are documented in the
  * 'LIVE DB REQUIRED' describe block at the bottom.
+ * As of docs/RISK_REGISTER.md risk #18/#102, this live proof now exists
+ * and passes against the real project: see
+ * supabase/tests/phase4a_database_security.pgtap.sql (ops_events
+ * immutability, automation_jobs/evidence_documents/payer_contracts
+ * RLS-enabled + policy-existence checks) and
+ * supabase/tests/rls_security_verification.sql (evidence_documents
+ * cross-org SELECT isolation).
  */
 
 import { describe, it, expect } from 'vitest';

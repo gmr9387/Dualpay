@@ -19,6 +19,10 @@
  * ----------------
  * Full behavioral proof requires pgTAP with actual role switching.
  * Required tests are documented in the LIVE DB section at the bottom.
+ * As of docs/RISK_REGISTER.md risk #18/#102, this proof now exists and
+ * passes live against the real project: see
+ * supabase/tests/phase4a_database_security.pgtap.sql (queue-function
+ * EXECUTE grants per role, ops_events UPDATE/DELETE/INSERT behavior).
  *
  * MIGRATIONS COVERED
  * ------------------
