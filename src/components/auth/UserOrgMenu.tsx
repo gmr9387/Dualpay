@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { useOrg } from '@/hooks/use-org';
-import { User, LogOut, Building2, ChevronDown, Plus } from 'lucide-react';
+import { User, LogOut, Building2, ChevronDown, Plus, Shield } from 'lucide-react';
 
 export function UserOrgMenu() {
   const { user, signOut } = useAuth();
@@ -60,6 +61,10 @@ export function UserOrgMenu() {
             </form>
           )}
           <div className="border-t my-1.5" />
+          <Link to="/account/security" onClick={() => setOpen(false)}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-left hover:bg-muted">
+            <Shield className="h-3.5 w-3.5 text-muted-foreground" /> Account security
+          </Link>
           <button onClick={signOut}
             className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-left hover:bg-muted">
             <LogOut className="h-3.5 w-3.5 text-muted-foreground" /> Sign out

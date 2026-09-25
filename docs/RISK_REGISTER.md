@@ -16,7 +16,7 @@
 | 3 | Storage object accessed cross-org via forged path | Low | High | Storage RLS gates `org_id/` prefix via `is_org_member`; root uploads blocked | Eng | Closed |
 | 4 | Signed URL for `evidence-documents` leaked and reused | Medium | High | Short-lived signed URLs; audit `document_uploaded` / `document_linked` ops events; rotate signing keys quarterly | SRE | Mitigating |
 | 5 | Session token theft from browser `localStorage` (XSS) | Medium | High | Strict CSP; no `dangerouslySetInnerHTML`; input sanitization; token TTL + refresh rotation | Eng | Mitigating |
-| 6 | MFA not enforced for `admin`/`owner` roles | High | High | Enable Supabase MFA; policy requires TOTP for elevated roles | Security | Open |
+| 6 | MFA not enforced for `admin`/`owner` roles | High | High | `EnforceMfaForElevatedRoles` blocks the app shell for owner/admin members with zero verified TOTP factors -- can't skip. `RequireAuth` also gates every authenticated session on AAL2 once a factor exists (returning users with MFA enrolled must pass a login-time challenge, not just first enrollment). Self-service enroll/manage at `/account/security` for all roles. Could not verify or enable any Supabase-project-level MFA toggle -- no tool in this session's Supabase MCP surface exposes project auth config (same gap as leaked-password protection, risk #7); the TOTP APIs used here are core `auth.mfa.*` methods available on all plans, not a toggle | Eng | Mitigating |
 | 7 | Weak/reused passwords accepted at signup | Medium | Medium | Enable HIBP leaked-password protection via `configure_auth` | Security | Open |
 | 8 | Privilege escalation via role stored on a client-editable table | Low | High | Roles live in `organization_members`; only `has_org_role` reads them; RLS forbids self-elevation | Eng | Closed |
 | 9 | First-member org self-join abused to join arbitrary org | Low | High | Bootstrap-only policy applied in migration `20260710182913…` | Eng | Closed |
@@ -118,7 +118,7 @@
 ## Summary
 
 - **Total risks:** 101
-- **Open:** 37 · **Mitigating:** 33 · **Closed:** 31
+- **Open:** 36 · **Mitigating:** 34 · **Closed:** 31
 - **Top themes (by count of Open + Mitigating):** governance & policy gaps (retention, IR runbook, officer designations, workforce training), audit-log completeness, MFA/HIBP, vendor/BAA management, and DR rehearsal.
 
 ## Cross-references
