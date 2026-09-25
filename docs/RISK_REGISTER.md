@@ -76,7 +76,7 @@
 | 62 | Local `.env` with secrets committed | Low | High | `.gitignore` covers env files; secret scanning in CI | Eng | Mitigating |
 | 63 | AI/LLM feature sends PHI to third-party model | Medium | High | Route via Lovable AI Gateway with BAA; redact before prompt; policy review before enabling | Eng | Open |
 | 64 | Prompt-injection in appeal-draft LLM leaks other tenants' data | Low | High | Isolate context per request; no cross-tenant retrieval; server-side prompt template | Eng | Open |
-| 65 | CSV export unfiltered exposes bulk PHI | Medium | Medium | `AdminAudit.tsx`/`audit-export.ts` do gate by role, redact, audit-log, and cap rows (10k) -- but only when going through the app UI/function. The underlying `ops_events`/`recovery_outcomes`/`claim_assignments` SELECT policies allow any org member (viewer included) to read those rows directly via the Supabase client, so the admin-only "full/unredacted" restriction and audit-logging are bypassable by a low-privilege user calling the API directly. Fixing this properly means either a server-side export edge function enforcing role + logging, or auditing every legitimate lower-role read path against those tables before tightening their base RLS -- flagged for a scoped follow-up, not a quick patch | Eng | Mitigating |
+| 65 | CSV export unfiltered exposes bulk PHI | Medium | Medium | New `audit-export` Edge Function is now the only path: it re-checks the caller's org role server-side (manager+ to export at all, admin/owner for unredacted "full" mode), redacts, caps rows (10k), and audit-logs, all inside the function -- can no longer be bypassed by calling the underlying tables directly with a lower-privilege token the way the old client-only implementation could. Residual: the base `ops_events`/`recovery_outcomes`/`claim_assignments` SELECT policies still let any org member read individual rows through other, unrelated screens -- that's an intentional pre-existing design choice for in-app visibility, not this risk's bulk-export concern, and tightening it needs a separate audit of every legitimate lower-role read path | Eng | Closed |
 | 66 | Print/PDF generation renders more fields than intended | Low | Medium | Whitelist fields in `pdf-appeal`; review templates | Eng | Mitigating |
 | 67 | Uploaded file with malicious content (malware, macro) | Medium | Medium | MIME allow-list enforced in `EvidenceUploader`; add server-side AV scan | Security | Open |
 | 68 | Zip-bomb / oversized upload DoS | Low | Medium | `file_size_limit` + `allowed_mime_types` set server-side on both Storage buckets (25MB/evidence, 10MB/appeal-packets) -- enforced by Storage itself, not bypassable by a modified client request the way the prior client-only MIME check was. Found while fixing this: **both buckets didn't exist at all** in the post-consolidation nucleus-2 project (RLS policies referencing them had migrated correctly, the bucket rows hadn't), so evidence upload was fully broken in production; fixed in the same migration | Eng | Closed |
@@ -118,7 +118,7 @@
 ## Summary
 
 - **Total risks:** 101
-- **Open:** 39 · **Mitigating:** 34 · **Closed:** 28
+- **Open:** 39 · **Mitigating:** 33 · **Closed:** 29
 - **Top themes (by count of Open + Mitigating):** governance & policy gaps (retention, IR runbook, officer designations, workforce training), audit-log completeness, MFA/HIBP, vendor/BAA management, and DR rehearsal.
 
 ## Cross-references
