@@ -113,13 +113,14 @@
 | 99 | No breach-notification runbook / template letters | Medium | High | Draft §164.404/§164.408 notification templates + escalation tree | Compliance | Open |
 | 100 | No independent SOC 2 audit / HIPAA attestation | High | High | Engage SOC 2 Type I in next 6 months; Type II thereafter | Compliance | Open |
 | 101 | `authenticated` role had zero table-level grants on 7 client-facing `dualpay` tables (`claims`, `adjudication_runs`, `cases`, `case_events`, `case_claim_links`, `member_accumulators`, `traces`) despite each having a full set of RLS policies -- every signed-in user hitting `ClaimsWorkbench`/`Index`/`AuditTrace` (all import `src/data/repository.ts`, which queries these tables directly) got a hard `permission denied for table X` error, not an RLS-filtered empty result. Root cause: the Supabase schema consolidation (`20260922`-era migrations moving dualpay into the shared `qrqekucwdfyqqzomuble` project) replicated table DDL and RLS policies but not the accompanying `GRANT` statements for these 7 tables specifically -- ~30 sibling tables kept theirs. Found while building an unrelated RLS integration test, confirmed live via `SET ROLE authenticated; SELECT ... FROM dualpay.claims;` before and after the fix | High | High | `20260925030000_grant_authenticated_missing_dualpay_tables.sql` grants SELECT/INSERT/UPDATE/DELETE to `authenticated` on all 7, matching their own policies and every sibling table's grant set; verified live post-fix (no error, correctly RLS-filtered to 0 rows with no identity set). `system_config` was the one other table missing these grants -- left alone, confirmed via grep that nothing in `src/` queries it client-side | Eng | Closed |
+| 102 | `supabase/tests/rls_security_verification.sql` and the two `.pgtap.sql` files in the same directory cannot actually run against this project -- confirmed via `SELECT * FROM pg_extension`, pgTAP is not installed (`installed_version` null), and `rls_security_verification.sql`'s own header already says `STATUS: PENDING`. It also references `public.organizations`/`public.organization_members`, which predate the schema-consolidation move to `dualpay.*`, so even installing pgTAP wouldn't make it pass as-is. These files read as a real, executed test suite but never have been | Medium | Medium | Not fixed -- found while building `supabase/tests/is_org_member_and_has_org_role.sql` (risk-101-adjacent work), which covers the `is_org_member`/`has_org_role` slice of what `rls_security_verification.sql` was meant to cover, using plain SQL (no pgTAP dependency) and confirmed actually passing live. The broader multi-org-isolation suite these files were meant to be is still unverified and would need either installing pgTAP + updating all schema references, or a rewrite in the same plain-SQL style | Eng | Open |
 
 ---
 
 ## Summary
 
-- **Total risks:** 102
-- **Open:** 36 · **Mitigating:** 34 · **Closed:** 32
+- **Total risks:** 103
+- **Open:** 37 · **Mitigating:** 34 · **Closed:** 32
 - **Top themes (by count of Open + Mitigating):** governance & policy gaps (retention, IR runbook, officer designations, workforce training), audit-log completeness, MFA/HIBP, vendor/BAA management, and DR rehearsal.
 
 ## Cross-references
