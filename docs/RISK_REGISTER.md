@@ -92,8 +92,8 @@
 | 78 | Direct clearinghouse link uses expired cert | Low | High | Cert inventory + auto-renew (Let's Encrypt / vendor); pre-expiry alert | SRE | Open |
 | 79 | No formal vendor risk assessment | High | Medium | Annual vendor review; SOC 2 reports collected from each subprocessor | Compliance | Open |
 | 80 | No penetration test in past 12 months | High | Medium | Annual third-party pen test | Security | Open |
-| 81 | No formal SDLC / change-management policy documented | High | Medium | Publish SDLC policy; PR review + approval evidence retained | Eng | Open |
-| 82 | Deploys not tied to ticket/change record | Medium | Low | Enforce PR → change-record linkage; deploy log | Eng | Open |
+| 81 | No formal SDLC / change-management policy documented | High | Medium | `docs/SDLC.md` published, describing the real, already-running process (PR + `.github/workflows/ci.yml` lint/test/build gate, migration review discipline) rather than an aspirational one -- traced against the actual CI config and migration history before writing it down. One gap flagged honestly rather than papered over: branch-protection enforcement (CI must pass before merge) lives in GitHub repo settings, which no file or workflow run can confirm from inside the codebase -- marked Unverified in the doc pending a repo admin check | Eng | Mitigating |
+| 82 | Deploys not tied to ticket/change record | Medium | Low | `.github/pull_request_template.md` requires a filled-in `## Change Record` section (a linked issue, a Risk # row, a gapMap item, or a one-sentence reason); `.github/workflows/change-record-check.yml` fails any PR whose description leaves it empty or missing, checked against the real PR body via the GitHub Actions event payload, not just template presence. Deploy log: Supabase's own migration history (`list_migrations`) is the authoritative, already-existing timestamped record for schema changes -- no new system built where one already existed | Eng | Closed |
 | 83 | Production access shared across engineers | Medium | Medium | Named accounts only; JIT elevation; audit trail | SRE | Open |
 | 84 | No documented capacity plan | Medium | Medium | Baseline load model; quarterly review; auto-scale where available | SRE | Open |
 | 85 | Single-region hosting → regional outage impacts all customers | Medium | High | Document RTO for regional failover; consider multi-region for enterprise tier | SRE | Open |
@@ -121,7 +121,7 @@
 ## Summary
 
 - **Total risks:** 104
-- **Open:** 30 · **Mitigating:** 36 · **Closed:** 38
+- **Open:** 28 · **Mitigating:** 37 · **Closed:** 39
 - **Top themes (by count of Open + Mitigating):** governance & policy gaps (retention, IR runbook, officer designations, workforce training), audit-log completeness, MFA/HIBP, vendor/BAA management, and DR rehearsal.
 
 ## Cross-references

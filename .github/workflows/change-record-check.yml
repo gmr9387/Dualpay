@@ -1,0 +1,45 @@
+name: Change Record Check
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  change-record-check:
+    name: change-record-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Verify PR description has a filled-in Change Record section
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.pull_request.body || "";
+
+            // Grab everything under "## Change Record" up to the next "## " heading.
+            const match = body.match(/##\s*Change Record\s*\n([\s\S]*?)(?:\n##\s|$)/i);
+            if (!match) {
+              core.setFailed(
+                "This PR's description has no '## Change Record' section. " +
+                "See docs/SDLC.md §3 — add one of: a linked issue (Fixes #123), " +
+                "a Risk #NN reference, a gapMap item, or one sentence on why this change exists."
+              );
+              return;
+            }
+
+            // Strip HTML comments (the template's own instructions) and whitespace.
+            const content = match[1].replace(/<!--[\s\S]*?-->/g, "").trim();
+
+            if (content.length === 0) {
+              core.setFailed(
+                "The '## Change Record' section is present but empty. " +
+                "Fill it in per docs/SDLC.md §3 before this can merge."
+              );
+              return;
+            }
+
+            core.info(`Change Record found: ${content.slice(0, 200)}`);
