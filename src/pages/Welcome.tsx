@@ -66,6 +66,27 @@ function Eyebrow({ children }: { children: ReactNode }) {
   );
 }
 
+/** Big faint editorial page-number, bled behind a section's heading column. */
+function SectionNumber({ children }: { children: ReactNode }) {
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none select-none absolute -top-10 -left-2 md:-left-4 font-display text-[120px] md:text-[160px] font-bold text-primary/[0.06] leading-none z-0"
+    >
+      {children}
+    </span>
+  );
+}
+
+/** Slightly tilts its child like a pinned magazine clipping, straightening on hover. */
+function Pinned({ children, tilt = '-rotate-2' }: { children: ReactNode; tilt?: string }) {
+  return (
+    <div className={`${tilt} hover:rotate-0 transition-transform duration-300 ease-out shadow-2xl rounded-xl`}>
+      {children}
+    </div>
+  );
+}
+
 function LiveBadge({ children }: { children: ReactNode }) {
   return (
     <span className="inline-flex items-center gap-1.5 text-[9.5px] font-mono px-1.5 py-0.5 rounded bg-gold/20 text-gold">
@@ -119,6 +140,8 @@ const CAPABILITIES = [
   { label: 'Right insurance pays first', detail: 'Every time, automatically' },
   { label: 'Reads your files automatically', detail: 'No new software to learn' },
   { label: 'Catches every mistake', detail: 'Underpaid or overpaid' },
+  { label: 'Every decision, provable', detail: 'Replay it any time' },
+  { label: 'Built for both sides', detail: 'Providers and payers' },
 ];
 
 export default function Welcome() {
@@ -143,7 +166,7 @@ export default function Welcome() {
       <section className="max-w-6xl mx-auto px-6 pt-16 pb-16 grid lg:grid-cols-[1.05fr_0.95fr] gap-12 items-center">
         <div className="animate-fade-up">
           <Eyebrow>Get Paid What You're Owed</Eyebrow>
-          <h1 className="font-display text-[42px] sm:text-[52px] font-semibold tracking-tight leading-[1.05]">
+          <h1 className="font-display text-[46px] sm:text-[58px] font-semibold tracking-tight leading-[1.02]">
             One tool for both sides of every claim.
           </h1>
           <p className="mt-5 text-[16px] text-muted-foreground max-w-lg leading-relaxed">
@@ -172,17 +195,23 @@ export default function Welcome() {
       </section>
 
       {/* Capability facts strip -- real, verifiable properties, not results.
-          Scrolls as a looping ticker; pauses on hover so it stays readable. */}
-      <section className="border-y bg-card overflow-hidden">
-        <div className="group py-6">
-          <div className="flex w-max animate-marquee gap-16 px-8 group-hover:[animation-play-state:paused]">
+          Full-bleed dark ticker, scrolling on a loop; pauses on hover so it
+          stays readable if someone wants to actually read an item. */}
+      <section className="overflow-hidden border-y border-gold/20" style={{ background: 'hsl(150 45% 9%)' }}>
+        <div className="group py-7">
+          <div className="flex w-max animate-marquee items-center group-hover:[animation-play-state:paused]">
             {[...CAPABILITIES, ...CAPABILITIES].map((s, i) => (
-              <div key={i} className="flex items-center gap-3 shrink-0">
-                <span className="h-1.5 w-1.5 rounded-full bg-gold animate-pulse-dot" />
+              <div key={i} className="flex items-center gap-4 shrink-0 pr-10">
+                <span className="h-2 w-2 rounded-full bg-gold animate-pulse-dot shrink-0" />
                 <div>
-                  <div className="font-display text-[15px] font-semibold whitespace-nowrap">{s.label}</div>
-                  <div className="text-[11.5px] text-muted-foreground mt-0.5 whitespace-nowrap">{s.detail}</div>
+                  <div className="font-display text-white text-[20px] font-bold tracking-tight leading-none whitespace-nowrap">
+                    {s.label}
+                  </div>
+                  <div className="text-[11px] text-gold/85 font-semibold uppercase tracking-wider mt-1.5 whitespace-nowrap">
+                    {s.detail}
+                  </div>
                 </div>
+                <span aria-hidden className="text-gold/25 text-3xl font-light pl-6 select-none">/</span>
               </div>
             ))}
           </div>
@@ -193,17 +222,17 @@ export default function Welcome() {
       <section className="max-w-6xl mx-auto px-6 py-20">
         <Reveal>
           <Eyebrow>Our Platform</Eyebrow>
-          <h2 className="font-display text-[30px] font-semibold tracking-tight max-w-lg">
+          <h2 className="font-display text-[34px] sm:text-[38px] font-semibold tracking-tight max-w-lg">
             Built for both sides of the claim
           </h2>
         </Reveal>
         <div className="mt-10 grid sm:grid-cols-2 gap-5">
           <Reveal delay={0}>
-            <div className="rounded-xl border bg-card p-6 h-full">
-              <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center mb-4">
-                <FileCheck className="h-5 w-5 text-primary" />
+            <div className="group rounded-xl border bg-card p-7 h-full transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+              <div className="h-12 w-12 rounded-lg bg-accent flex items-center justify-center mb-4 transition-colors group-hover:bg-primary/15">
+                <FileCheck className="h-6 w-6 text-primary" />
               </div>
-              <div className="font-display text-[17px] font-semibold">Recover What You're Owed</div>
+              <div className="font-display text-[19px] font-semibold">Recover What You're Owed</div>
               <p className="mt-1.5 text-[13.5px] text-muted-foreground leading-relaxed">
                 Every payment gets compared to your contract. If you were paid less than
                 you should have been, we catch it, build the report, and prove it —
@@ -212,11 +241,11 @@ export default function Welcome() {
             </div>
           </Reveal>
           <Reveal delay={120}>
-            <div className="rounded-xl border bg-card p-6 h-full">
-              <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center mb-4">
-                <Search className="h-5 w-5 text-primary" />
+            <div className="group rounded-xl border bg-card p-7 h-full transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+              <div className="h-12 w-12 rounded-lg bg-accent flex items-center justify-center mb-4 transition-colors group-hover:bg-primary/15">
+                <Search className="h-6 w-6 text-primary" />
               </div>
-              <div className="font-display text-[17px] font-semibold">Stop Overpaying Providers</div>
+              <div className="font-display text-[19px] font-semibold">Stop Overpaying Providers</div>
               <p className="mt-1.5 text-[13.5px] text-muted-foreground leading-relaxed">
                 The same check runs in reverse. If you paid a provider more than the
                 contract allows, we flag it — along with any insurance mix-ups in the
@@ -228,95 +257,110 @@ export default function Welcome() {
       </section>
 
       {/* Feature detail: COB */}
-      <section className="max-w-6xl mx-auto px-6 py-16 grid md:grid-cols-2 gap-12 items-center">
-        <Reveal>
-          <Eyebrow>Two Insurance Plans</Eyebrow>
-          <h3 className="font-display text-[26px] font-semibold tracking-tight leading-tight">
-            The right plan pays first, every time
-          </h3>
-          <p className="mt-4 text-[14px] text-muted-foreground leading-relaxed">
-            When a patient has two insurance plans, billing the wrong one first is an
-            easy mistake to make. We work out the correct order automatically, using
-            the real rules — never a guess. If we need the other plan's EOB first,
-            the claim is routed there on its own.
-          </p>
+      <section className="max-w-6xl mx-auto px-6 py-16 grid md:grid-cols-2 gap-12 items-center overflow-visible">
+        <Reveal className="relative">
+          <SectionNumber>01</SectionNumber>
+          <div className="relative z-10">
+            <Eyebrow>Two Insurance Plans</Eyebrow>
+            <h3 className="font-display text-[28px] sm:text-[32px] font-semibold tracking-tight leading-tight">
+              The right plan pays first, every time
+            </h3>
+            <p className="mt-4 text-[14px] text-muted-foreground leading-relaxed">
+              When a patient has two insurance plans, billing the wrong one first is an
+              easy mistake to make. We work out the correct order automatically, using
+              the real rules — never a guess. If we need the other plan's EOB first,
+              the claim is routed there on its own.
+            </p>
+          </div>
         </Reveal>
         <Reveal delay={150}>
-          <MockPanel>
-            <MockCard>
-              <div className="bg-[hsl(150_45%_12%)] px-4 py-2.5 flex items-center justify-between">
-                <span className="text-white text-[12.5px] font-medium">Member Coverage — COB Check</span>
-                <LiveBadge>RESOLVED</LiveBadge>
-              </div>
-              <div className="p-4 space-y-2 text-[12px] font-mono">
-                <div className="flex justify-between"><span className="text-muted-foreground">Primary</span><span>Employer Plan A</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Secondary</span><span>Spouse Plan B</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Rule applied</span><span>Birthday rule</span></div>
-                <div className="flex justify-between pt-2 border-t"><span className="text-muted-foreground">Status</span><span className="text-primary font-semibold">Routed to primary</span></div>
-              </div>
-            </MockCard>
-          </MockPanel>
+          <Pinned tilt="-rotate-2">
+            <MockPanel>
+              <MockCard>
+                <div className="bg-[hsl(150_45%_12%)] px-4 py-2.5 flex items-center justify-between">
+                  <span className="text-white text-[12.5px] font-medium">Member Coverage — COB Check</span>
+                  <LiveBadge>RESOLVED</LiveBadge>
+                </div>
+                <div className="p-4 space-y-2 text-[12px] font-mono">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Primary</span><span>Employer Plan A</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Secondary</span><span>Spouse Plan B</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Rule applied</span><span>Birthday rule</span></div>
+                  <div className="flex justify-between pt-2 border-t"><span className="text-muted-foreground">Status</span><span className="text-primary font-semibold">Routed to primary</span></div>
+                </div>
+              </MockCard>
+            </MockPanel>
+          </Pinned>
         </Reveal>
       </section>
 
       {/* Feature detail: overpayment finding */}
-      <section className="max-w-6xl mx-auto px-6 py-16 grid md:grid-cols-2 gap-12 items-center">
-        <Reveal className="md:order-2">
-          <Eyebrow>Payment Integrity</Eyebrow>
-          <h3 className="font-display text-[26px] font-semibold tracking-tight leading-tight">
-            Catch payments that were too high
-          </h3>
-          <p className="mt-4 text-[14px] text-muted-foreground leading-relaxed">
-            If a claim paid more than your contract allows, we catch it — and show
-            exactly which rate was broken, by how much, and how serious it is.
-          </p>
+      <section className="max-w-6xl mx-auto px-6 py-16 grid md:grid-cols-2 gap-12 items-center overflow-visible">
+        <Reveal className="md:order-2 relative">
+          <SectionNumber>02</SectionNumber>
+          <div className="relative z-10">
+            <Eyebrow>Payment Integrity</Eyebrow>
+            <h3 className="font-display text-[28px] sm:text-[32px] font-semibold tracking-tight leading-tight">
+              Catch payments that were too high
+            </h3>
+            <p className="mt-4 text-[14px] text-muted-foreground leading-relaxed">
+              If a claim paid more than your contract allows, we catch it — and show
+              exactly which rate was broken, by how much, and how serious it is.
+            </p>
+          </div>
         </Reveal>
         <Reveal className="md:order-1" delay={150}>
-          <MockPanel>
-            <MockCard>
-              <div className="bg-[hsl(150_45%_12%)] px-4 py-2.5 flex items-center justify-between">
-                <span className="text-white text-[12.5px] font-medium">Payer Findings</span>
-                <LiveBadge>OVERPAYMENT</LiveBadge>
-              </div>
-              <div className="p-4 space-y-2 text-[12px] font-mono">
-                <div className="flex justify-between"><span className="text-muted-foreground">CPT</span><span>99214</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Contracted</span><span>$148.00</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Paid</span><span>$210.00</span></div>
-                <div className="flex justify-between pt-2 border-t"><span className="text-muted-foreground">Variance</span><span className="text-status-denied font-semibold">$62.00 · critical</span></div>
-              </div>
-            </MockCard>
-          </MockPanel>
+          <Pinned tilt="rotate-2">
+            <MockPanel>
+              <MockCard>
+                <div className="bg-[hsl(150_45%_12%)] px-4 py-2.5 flex items-center justify-between">
+                  <span className="text-white text-[12.5px] font-medium">Payer Findings</span>
+                  <LiveBadge>OVERPAYMENT</LiveBadge>
+                </div>
+                <div className="p-4 space-y-2 text-[12px] font-mono">
+                  <div className="flex justify-between"><span className="text-muted-foreground">CPT</span><span>99214</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Contracted</span><span>$148.00</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Paid</span><span>$210.00</span></div>
+                  <div className="flex justify-between pt-2 border-t"><span className="text-muted-foreground">Variance</span><span className="text-status-denied font-semibold">$62.00 · critical</span></div>
+                </div>
+              </MockCard>
+            </MockPanel>
+          </Pinned>
         </Reveal>
       </section>
 
       {/* Feature detail: replay */}
-      <section className="max-w-6xl mx-auto px-6 py-16 grid md:grid-cols-2 gap-12 items-center">
-        <Reveal>
-          <Eyebrow>Proof, Not Guesswork</Eyebrow>
-          <h3 className="font-display text-[26px] font-semibold tracking-tight leading-tight">
-            Show your work, any time
-          </h3>
-          <p className="mt-4 text-[14px] text-muted-foreground leading-relaxed">
-            Run the same claim twice, get the same answer twice. Every decision is
-            saved, so you can always go back and show exactly how we got that number —
-            no digging through old faxes or spreadsheets.
-          </p>
+      <section className="max-w-6xl mx-auto px-6 py-16 grid md:grid-cols-2 gap-12 items-center overflow-visible">
+        <Reveal className="relative">
+          <SectionNumber>03</SectionNumber>
+          <div className="relative z-10">
+            <Eyebrow>Proof, Not Guesswork</Eyebrow>
+            <h3 className="font-display text-[28px] sm:text-[32px] font-semibold tracking-tight leading-tight">
+              Show your work, any time
+            </h3>
+            <p className="mt-4 text-[14px] text-muted-foreground leading-relaxed">
+              Run the same claim twice, get the same answer twice. Every decision is
+              saved, so you can always go back and show exactly how we got that number —
+              no digging through old faxes or spreadsheets.
+            </p>
+          </div>
         </Reveal>
         <Reveal delay={150}>
-          <MockPanel>
-            <MockCard>
-              <div className="bg-[hsl(150_45%_12%)] px-4 py-2.5 flex items-center gap-2">
-                <RotateCcw className="h-3.5 w-3.5 text-gold" />
-                <span className="text-white text-[12.5px] font-medium">Decision Log</span>
-              </div>
-              <div className="p-4 space-y-2 text-[12px] font-mono">
-                <div className="flex justify-between"><span className="text-muted-foreground">Record ID</span><span className="truncate max-w-[140px]">a3f9…c221</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Rules checked</span><span>7</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Steps calculated</span><span>12</span></div>
-                <div className="flex justify-between pt-2 border-t"><span className="text-muted-foreground">Re-run result</span><span className="text-primary font-semibold">Same answer</span></div>
-              </div>
-            </MockCard>
-          </MockPanel>
+          <Pinned tilt="-rotate-1">
+            <MockPanel>
+              <MockCard>
+                <div className="bg-[hsl(150_45%_12%)] px-4 py-2.5 flex items-center gap-2">
+                  <RotateCcw className="h-3.5 w-3.5 text-gold" />
+                  <span className="text-white text-[12.5px] font-medium">Decision Log</span>
+                </div>
+                <div className="p-4 space-y-2 text-[12px] font-mono">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Record ID</span><span className="truncate max-w-[140px]">a3f9…c221</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Rules checked</span><span>7</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Steps calculated</span><span>12</span></div>
+                  <div className="flex justify-between pt-2 border-t"><span className="text-muted-foreground">Re-run result</span><span className="text-primary font-semibold">Same answer</span></div>
+                </div>
+              </MockCard>
+            </MockPanel>
+          </Pinned>
         </Reveal>
       </section>
 
