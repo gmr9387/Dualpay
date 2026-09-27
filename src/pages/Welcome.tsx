@@ -192,6 +192,7 @@ export default function Welcome() {
         </div>
       </header>
 
+      <main>
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-6 pt-16 pb-16 grid lg:grid-cols-[1.05fr_0.95fr] gap-12 items-center">
         <div className="animate-fade-up">
@@ -253,7 +254,10 @@ export default function Welcome() {
         <div className="group py-7">
           <div className="flex w-max animate-marquee items-center group-hover:[animation-play-state:paused]">
             {[...CAPABILITIES, ...CAPABILITIES].map((s, i) => (
-              <div key={i} className="flex items-center gap-4 shrink-0 pr-10">
+              // The array is duplicated to make the marquee loop seamless;
+              // the second copy is decorative repetition, so it's hidden
+              // from assistive tech to avoid every item being announced twice.
+              <div key={i} aria-hidden={i >= CAPABILITIES.length} className="flex items-center gap-4 shrink-0 pr-10">
                 <span className="h-2 w-2 rounded-full bg-gold animate-pulse-dot shrink-0" />
                 <div>
                   <div className="font-display text-white text-[20px] font-bold tracking-tight leading-none whitespace-nowrap">
@@ -463,6 +467,7 @@ export default function Welcome() {
             <img
               src={documentReview}
               alt="Team reviewing claim documentation together"
+              loading="lazy"
               className="w-full h-[220px] sm:h-[360px] lg:h-[440px] object-cover"
               style={{ objectPosition: '50% 13%' }}
             />
@@ -488,6 +493,7 @@ export default function Welcome() {
           </div>
         </section>
       </Reveal>
+      </main>
 
       <footer className="border-t">
         <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row sm:items-start justify-between gap-6 text-[12px] text-muted-foreground">
