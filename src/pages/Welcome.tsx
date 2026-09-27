@@ -41,9 +41,6 @@ function MockCard({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Same copy, two layouts: overlaid on the photo when there's room (tablet/desktop),
-// stacked below it on narrow screens so the text can never cover the photo no
-// matter how many lines it wraps to.
 function PhotoCaption() {
   return (
     <>
@@ -242,23 +239,20 @@ export default function Welcome() {
         </MockPanel>
       </section>
 
-      {/* Full-width photo band. Caption overlays the photo on tablet/desktop,
-          where there's enough width for it to sit as a compact corner card;
-          on phones it moves below the photo instead, so it never covers it. */}
+      {/* Full-width photo band. Caption sits centered below the photo at
+          every size, rather than overlaid on it, so it never covers the
+          image and looks the same on phone and desktop. */}
       <section className="mx-6 mb-16">
-        <div className="relative rounded-2xl overflow-hidden">
+        <div className="rounded-2xl overflow-hidden">
           <img
             src={documentReview}
             alt="Team reviewing claim documentation together"
             className="w-full h-[220px] sm:h-[360px] lg:h-[440px] object-cover"
             style={{ objectPosition: '50% 13%' }}
           />
-          <div className="hidden sm:block absolute bottom-8 left-8 max-w-sm rounded-xl p-6 shadow-xl"
-            style={{ background: 'hsl(150 45% 9% / 0.94)' }}>
-            <PhotoCaption />
-          </div>
         </div>
-        <div className="sm:hidden mt-4 rounded-xl p-5" style={{ background: 'hsl(150 45% 9% / 0.94)' }}>
+        <div className="mt-5 sm:mt-6 mx-auto max-w-lg text-center rounded-xl p-5 sm:p-6"
+          style={{ background: 'hsl(150 45% 9% / 0.94)' }}>
           <PhotoCaption />
         </div>
       </section>
