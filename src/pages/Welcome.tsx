@@ -41,6 +41,23 @@ function MockCard({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Same copy, two layouts: overlaid on the photo when there's room (tablet/desktop),
+// stacked below it on narrow screens so the text can never cover the photo no
+// matter how many lines it wraps to.
+function PhotoCaption() {
+  return (
+    <>
+      <h3 className="font-display text-white text-[22px] sm:text-[26px] font-semibold tracking-tight leading-tight">
+        One record, both teams
+      </h3>
+      <p className="mt-3 text-[13px] text-white/80 leading-relaxed">
+        Both teams look at the same claim, the same contract, and the same
+        history. No comparing two different systems after the fact.
+      </p>
+    </>
+  );
+}
+
 export default function Welcome() {
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -225,23 +242,24 @@ export default function Welcome() {
         </MockPanel>
       </section>
 
-      {/* Full-width photo band */}
-      <section className="relative mx-6 mb-16 rounded-2xl overflow-hidden">
-        <img
-          src={documentReview}
-          alt="Team reviewing claim documentation together"
-          className="w-full h-[280px] sm:h-[360px] lg:h-[440px] object-cover"
-          style={{ objectPosition: '50% 13%' }}
-        />
-        <div className="absolute bottom-5 left-5 right-5 sm:bottom-8 sm:left-8 sm:right-auto sm:max-w-sm rounded-xl p-5 sm:p-6 shadow-xl"
-          style={{ background: 'hsl(150 45% 9% / 0.94)' }}>
-          <h3 className="font-display text-white text-[22px] sm:text-[26px] font-semibold tracking-tight leading-tight">
-            One record, both teams
-          </h3>
-          <p className="mt-3 text-[13px] text-white/80 leading-relaxed">
-            Both teams look at the same claim, the same contract, and the same
-            history. No comparing two different systems after the fact.
-          </p>
+      {/* Full-width photo band. Caption overlays the photo on tablet/desktop,
+          where there's enough width for it to sit as a compact corner card;
+          on phones it moves below the photo instead, so it never covers it. */}
+      <section className="mx-6 mb-16">
+        <div className="relative rounded-2xl overflow-hidden">
+          <img
+            src={documentReview}
+            alt="Team reviewing claim documentation together"
+            className="w-full h-[220px] sm:h-[360px] lg:h-[440px] object-cover"
+            style={{ objectPosition: '50% 13%' }}
+          />
+          <div className="hidden sm:block absolute bottom-8 left-8 max-w-sm rounded-xl p-6 shadow-xl"
+            style={{ background: 'hsl(150 45% 9% / 0.94)' }}>
+            <PhotoCaption />
+          </div>
+        </div>
+        <div className="sm:hidden mt-4 rounded-xl p-5" style={{ background: 'hsl(150 45% 9% / 0.94)' }}>
+          <PhotoCaption />
         </div>
       </section>
 
