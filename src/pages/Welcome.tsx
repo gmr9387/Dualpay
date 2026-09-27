@@ -62,14 +62,14 @@ export default function Welcome() {
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-6 pt-16 pb-16 grid lg:grid-cols-[1.05fr_0.95fr] gap-12 items-center">
         <div>
-          <Eyebrow>Healthcare Revenue &amp; Payment Intelligence</Eyebrow>
+          <Eyebrow>Get Paid What You're Owed</Eyebrow>
           <h1 className="font-display text-[42px] sm:text-[52px] font-semibold tracking-tight leading-[1.05]">
-            One platform. Both sides of the claim.
+            One tool for both sides of every claim.
           </h1>
           <p className="mt-5 text-[16px] text-muted-foreground max-w-lg leading-relaxed">
-            Deterministic claims adjudication, coordination of benefits, and contract-driven
-            variance detection — built to recover what a provider is owed, and to catch what
-            a payer overpaid, from the same engine.
+            Every claim gets checked against your contract, automatically. If a
+            provider was underpaid, we recover it. If a payer overpaid, we catch
+            that too — from the same system.
           </p>
           <div className="mt-8 flex items-center gap-3">
             <Link to="/login" className="h-11 px-6 inline-flex items-center gap-2 rounded-md bg-primary text-primary-foreground text-[14px] font-medium hover:bg-primary/90">
@@ -83,8 +83,8 @@ export default function Welcome() {
             <img src={heroClinician} alt="Clinician reviewing claims on a laptop" className="w-full h-full object-cover" />
           </div>
           <div className="absolute -bottom-5 -left-5 rounded-lg bg-card border shadow-lg px-4 py-3 hidden sm:block">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Replay check</div>
-            <div className="font-display text-[15px] font-semibold text-primary">Match — every run</div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Verified</div>
+            <div className="font-display text-[15px] font-semibold text-primary">Same answer, every time</div>
           </div>
         </div>
       </section>
@@ -93,10 +93,10 @@ export default function Welcome() {
       <section className="border-y bg-card">
         <div className="max-w-6xl mx-auto px-6 py-6 grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
           {[
-            { label: 'Deterministic adjudication', detail: 'Every decision is replayable' },
-            { label: 'Real COB primacy engine', detail: 'Birthday rule + payer order' },
-            { label: 'X12 835 / 837 native', detail: 'Remittance and claim EDI' },
-            { label: 'Provider + payer, one engine', detail: 'Under- and overpayment' },
+            { label: 'Same claim, same answer', detail: 'No exceptions' },
+            { label: 'Right insurance pays first', detail: 'Every time, automatically' },
+            { label: 'Reads your files automatically', detail: 'No new software to learn' },
+            { label: 'Catches every mistake', detail: 'Underpaid or overpaid' },
           ].map(s => (
             <div key={s.label}>
               <div className="font-display text-[15px] font-semibold">{s.label}</div>
@@ -117,22 +117,22 @@ export default function Welcome() {
             <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center mb-4">
               <FileCheck className="h-5 w-5 text-primary" />
             </div>
-            <div className="font-display text-[17px] font-semibold">Provider Recovery</div>
+            <div className="font-display text-[17px] font-semibold">Recover What You're Owed</div>
             <p className="mt-1.5 text-[13.5px] text-muted-foreground leading-relaxed">
-              Match every remittance line against your real contracts and fee schedules.
-              Underpayments become disputes automatically, with a client-facing recovery
-              report and a full audit trail from claim to check.
+              Every payment gets compared to your contract. If you were paid less than
+              you should have been, we catch it, build the report, and prove it —
+              automatically.
             </p>
           </div>
           <div className="rounded-xl border bg-card p-6">
             <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center mb-4">
               <Search className="h-5 w-5 text-primary" />
             </div>
-            <div className="font-display text-[17px] font-semibold">Payer Payment Integrity</div>
+            <div className="font-display text-[17px] font-semibold">Stop Overpaying Providers</div>
             <p className="mt-1.5 text-[13.5px] text-muted-foreground leading-relaxed">
-              The same fee-schedule match, read the other direction: claims paid above
-              the contracted rate surface as findings, alongside COB conflicts flagged
-              from the same 835 import.
+              The same check runs in reverse. If you paid a provider more than the
+              contract allows, we flag it — along with any insurance mix-ups in the
+              same file.
             </p>
           </div>
         </div>
@@ -141,14 +141,15 @@ export default function Welcome() {
       {/* Feature detail: COB */}
       <section className="max-w-6xl mx-auto px-6 py-16 grid md:grid-cols-2 gap-12 items-center">
         <div>
-          <Eyebrow>Coordination of Benefits</Eyebrow>
+          <Eyebrow>Two Insurance Plans</Eyebrow>
           <h3 className="font-display text-[26px] font-semibold tracking-tight leading-tight">
-            Primacy determined correctly, every time
+            The right plan pays first, every time
           </h3>
           <p className="mt-4 text-[14px] text-muted-foreground leading-relaxed">
-            The birthday rule, plan-type precedence, and payer sequencing run as real logic
-            against a member's actual coverage — not a lookup table someone forgot to update.
-            When a claim needs primary EOB before it can move, it's routed there automatically.
+            When a patient has two insurance plans, billing the wrong one first is an
+            easy mistake to make. We work out the correct order automatically, using
+            the real rules — never a guess. If we need the other plan's EOB first,
+            the claim is routed there on its own.
           </p>
         </div>
         <MockPanel>
@@ -172,12 +173,11 @@ export default function Welcome() {
         <div className="md:order-2">
           <Eyebrow>Payment Integrity</Eyebrow>
           <h3 className="font-display text-[26px] font-semibold tracking-tight leading-tight">
-            Find what was paid above contract
+            Catch payments that were too high
           </h3>
           <p className="mt-4 text-[14px] text-muted-foreground leading-relaxed">
-            The same engine that catches provider underpayments runs in reverse: when a
-            paid amount exceeds the contracted rate, it's flagged, severity-scored, and
-            traceable back to the exact fee-schedule row that should have governed it.
+            If a claim paid more than your contract allows, we catch it — and show
+            exactly which rate was broken, by how much, and how serious it is.
           </p>
         </div>
         <MockPanel className="md:order-1">
@@ -199,27 +199,27 @@ export default function Welcome() {
       {/* Feature detail: replay */}
       <section className="max-w-6xl mx-auto px-6 py-16 grid md:grid-cols-2 gap-12 items-center">
         <div>
-          <Eyebrow>Auditability</Eyebrow>
+          <Eyebrow>Proof, Not Guesswork</Eyebrow>
           <h3 className="font-display text-[26px] font-semibold tracking-tight leading-tight">
-            Every decision replays to the same result
+            Show your work, any time
           </h3>
           <p className="mt-4 text-[14px] text-muted-foreground leading-relaxed">
-            Adjudication is deterministic: the same claim, contract, and plan inputs always
-            produce the same output, and every run is logged with a fingerprint you can
-            replay later to prove exactly how a payment decision was reached.
+            Run the same claim twice, get the same answer twice. Every decision is
+            saved, so you can always go back and show exactly how we got that number —
+            no digging through old faxes or spreadsheets.
           </p>
         </div>
         <MockPanel>
           <MockCard>
             <div className="bg-[hsl(150_45%_12%)] px-4 py-2.5 flex items-center gap-2">
               <RotateCcw className="h-3.5 w-3.5 text-gold" />
-              <span className="text-white text-[12.5px] font-medium">Replay Ledger</span>
+              <span className="text-white text-[12.5px] font-medium">Decision Log</span>
             </div>
             <div className="p-4 space-y-2 text-[12px] font-mono">
-              <div className="flex justify-between"><span className="text-muted-foreground">Fingerprint</span><span className="truncate max-w-[140px]">a3f9…c221</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Rule firings</span><span>7</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Math steps</span><span>12</span></div>
-              <div className="flex justify-between pt-2 border-t"><span className="text-muted-foreground">Replay check</span><span className="text-primary font-semibold">Match</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Record ID</span><span className="truncate max-w-[140px]">a3f9…c221</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Rules checked</span><span>7</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Steps calculated</span><span>12</span></div>
+              <div className="flex justify-between pt-2 border-t"><span className="text-muted-foreground">Re-run result</span><span className="text-primary font-semibold">Same answer</span></div>
             </div>
           </MockCard>
         </MockPanel>
@@ -236,12 +236,11 @@ export default function Welcome() {
         <div className="absolute bottom-5 left-5 right-5 sm:bottom-8 sm:left-8 sm:right-auto sm:max-w-sm rounded-xl p-5 sm:p-6 shadow-xl"
           style={{ background: 'hsl(150 45% 9% / 0.94)' }}>
           <h3 className="font-display text-white text-[22px] sm:text-[26px] font-semibold tracking-tight leading-tight">
-            One record, both sides of the review
+            One record, both teams
           </h3>
           <p className="mt-3 text-[13px] text-white/80 leading-relaxed">
-            Provider recovery and payer payment integrity teams work from the same
-            claim, the same contract, and the same audit trail — no reconciling
-            two systems after the fact.
+            Both teams look at the same claim, the same contract, and the same
+            history. No comparing two different systems after the fact.
           </p>
         </div>
       </section>
