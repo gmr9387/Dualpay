@@ -62,6 +62,8 @@ export interface UnderpaymentDispute {
   // Contingency fee — assessed only once status reaches 'recovered'.
   fee_percent_bps: number;
   assessed_fee_cents: number;
+  // Set once this dispute's fee is rolled into a monthly Stripe invoice.
+  billing_invoice_id?: string | null;
   // Client-facing recovery report.
   client_response: ClientResponse | string | null;
   client_response_at?: string | null;

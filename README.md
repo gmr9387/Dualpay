@@ -398,6 +398,8 @@ X12 validation hardened
 
 a repo-wide Supabase client type-erasure cast was found and removed (see Type Safety below); it had been hiding several real bugs, including a case-creation insert that was missing a required primary key
 
+**No mechanism existed to collect the contingency fees the platform already computed.** `underpayment_disputes.assessed_fee_cents` was calculated correctly once a dispute reached `status='recovered'`, but nothing ever billed it — no Stripe customer, no invoice, no UI. Built the standard industry model for contingency-fee RCM vendors (direct B2B invoicing, not a marketplace/Connect flow): `organizations.stripe_customer_id`/`billing_email`/`ach_connected_at` + a `billing_invoices` table linked from `underpayment_disputes.billing_invoice_id`; `stripe-sync-customer` (Checkout Session in `setup` mode to connect ACH), `stripe-webhook` (marks the bank account verified, mirrors invoice status), and `stripe-billing-rollup` (one Stripe invoice per org, one line item per unbilled recovered dispute, `charge_automatically`/ACH once connected else `send_invoice` net-15) — dispatched monthly via the same Vault-secret-gated `pg_cron`+`pg_net` pattern proven by valtaris-glue's job dispatcher, so it safely no-ops rather than erroring until the real secrets are set.
+
 Validation
 Validation includes:
 
@@ -444,6 +446,7 @@ Browser E2E suite (Playwright, core business-loop pages)	Written, harness-verifi
 Storage isolation	Validation pending
 RLS	Validation pending
 RBAC	Validation pending
+Contingency-fee billing (Stripe, monthly ACH rollup)	Implemented (schema, cron dispatcher, sync-customer/webhook/rollup Edge Functions, admin billing UI all live) — dormant until `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` (Edge Function secrets) and the `dualpay_billing_service_role_key` Vault secret are set; every write path safely no-ops until then, mirroring valtaris-glue's dispatcher gate
 Evidence lineage	Roadmap
 Appeal lineage	Roadmap
 Executive attribution	Roadmap

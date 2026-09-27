@@ -6,7 +6,7 @@ import {
   HelpCircle, Bell, Database, Activity, Target, FolderOpen, BarChart3,
   BookOpen, GitBranch, TrendingUp, Users, FileCheck, BookText, ShieldCheck,
   Award, ClipboardList, Siren, Scale, Phone, Gauge, Factory, FileInput, History, AlertOctagon as AlertIcon,
-  Bot, Settings2, Cpu, AlertTriangle,
+  Bot, Settings2, Cpu, AlertTriangle, CreditCard,
 } from 'lucide-react';
 import { UserOrgMenu, NoOrgEmptyState } from '@/components/auth/UserOrgMenu';
 import { useOrg, type OrgRole } from '@/hooks/use-org';
@@ -147,6 +147,7 @@ const SECTIONS: NavSection[] = [
       { to: '/admin',           label: 'Admin Console',       icon: Shield, badge: 'NEW' },
       { to: '/admin/security',  label: 'Security Inventory',  icon: ShieldCheck, badge: 'NEW' },
       { to: '/admin/audit',     label: 'Audit Export',        icon: ScrollText, badge: 'NEW' },
+      { to: '/admin/billing',   label: 'Billing',             icon: CreditCard, badge: 'NEW' },
     ],
   },
 ];
