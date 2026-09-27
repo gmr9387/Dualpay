@@ -18,7 +18,7 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, ArrowRight, FileCheck, Search, RotateCcw } from 'lucide-react';
+import { Shield, ArrowRight, FileCheck, Search, RotateCcw, Lock, ShieldCheck, KeyRound, Database, type LucideIcon } from 'lucide-react';
 import heroClinician from '@/assets/marketing/hero-clinician.jpg';
 import documentReview from '@/assets/marketing/document-review.jpg';
 
@@ -127,6 +127,30 @@ function MockCard({ children }: { children: ReactNode }) {
   );
 }
 
+function Step({ n, title, body }: { n: number; title: string; body: string }) {
+  return (
+    <div>
+      <div className="h-9 w-9 rounded-full bg-primary text-primary-foreground font-display font-bold text-[15px] flex items-center justify-center mb-4">
+        {n}
+      </div>
+      <div className="font-display text-[17px] font-semibold">{title}</div>
+      <p className="mt-1.5 text-[13.5px] text-muted-foreground leading-relaxed">{body}</p>
+    </div>
+  );
+}
+
+function SecurityFact({ icon: Icon, title, body }: { icon: LucideIcon; title: string; body: string }) {
+  return (
+    <div className="rounded-xl border bg-card p-6 h-full">
+      <div className="h-10 w-10 rounded-lg bg-primary/15 border border-primary/20 flex items-center justify-center mb-4">
+        <Icon className="h-5 w-5 text-primary" />
+      </div>
+      <div className="font-display text-[15px] font-semibold">{title}</div>
+      <p className="mt-1.5 text-[13px] text-muted-foreground leading-relaxed">{body}</p>
+    </div>
+  );
+}
+
 function PhotoCaption() {
   return (
     <>
@@ -197,6 +221,28 @@ export default function Welcome() {
             </div>
             <div className="font-display text-[15px] font-semibold text-primary">Same answer, every time</div>
           </div>
+        </div>
+      </section>
+
+      {/* How it works -- the process, in plain terms, before the capability
+          facts and feature deep-dives get specific. */}
+      <section className="max-w-6xl mx-auto px-6 py-14 border-t">
+        <Reveal>
+          <Eyebrow>How It Works</Eyebrow>
+          <h2 className="font-display text-[26px] sm:text-[30px] font-semibold tracking-tight max-w-lg">
+            From raw files to a provable answer
+          </h2>
+        </Reveal>
+        <div className="mt-9 grid sm:grid-cols-3 gap-8">
+          <Reveal delay={0}>
+            <Step n={1} title="Send us what you have" body="Claims, remittances, and contracts — in whatever format they're already in." />
+          </Reveal>
+          <Reveal delay={100}>
+            <Step n={2} title="We check every claim" body="Against the real contract, in both directions, automatically — no sampling." />
+          </Reveal>
+          <Reveal delay={200}>
+            <Step n={3} title="You get the findings" body="Underpayments to recover, overpayments to flag — each one you can replay and prove." />
+          </Reveal>
         </div>
       </section>
 
@@ -370,6 +416,44 @@ export default function Welcome() {
         </Reveal>
       </section>
 
+      {/* Security & compliance -- only claims that trace to something real
+          in the codebase (docs/SECURITY.md, docs/HIPAA_OVERVIEW.md): RLS
+          tenant isolation, role-scoped writes, TLS/AES-256, private
+          storage. SOC 2 / a signed BAA are roadmap items, not claimed as
+          done -- stated plainly rather than left implied. */}
+      <section id="security" className="max-w-6xl mx-auto px-6 py-20 border-t scroll-mt-16">
+        <Reveal>
+          <Eyebrow>Security &amp; Compliance</Eyebrow>
+          <h2 className="font-display text-[34px] sm:text-[38px] font-semibold tracking-tight max-w-lg">
+            Built for data that can't leak
+          </h2>
+          <p className="mt-4 text-[14px] text-muted-foreground max-w-2xl leading-relaxed">
+            DualPay handles protected health information. That shapes the system from
+            the database up, not just the parts you can see.
+          </p>
+        </Reveal>
+        <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <Reveal delay={0}>
+            <SecurityFact icon={Lock} title="Encrypted everywhere" body="TLS in transit, AES-256 at rest, for every claim and every document." />
+          </Reveal>
+          <Reveal delay={80}>
+            <SecurityFact icon={ShieldCheck} title="Isolated by organization" body="Row-level security enforced in the database itself, not just hidden in the app." />
+          </Reveal>
+          <Reveal delay={160}>
+            <SecurityFact icon={KeyRound} title="Role-based access" body="Analyst, manager, admin, owner — each permission checked at the database layer." />
+          </Reveal>
+          <Reveal delay={240}>
+            <SecurityFact icon={Database} title="Private storage, always" body="Documents and evidence live in private buckets behind signed, single-use links." />
+          </Reveal>
+        </div>
+        <Reveal delay={320}>
+          <p className="mt-8 text-[12.5px] text-muted-foreground/80">
+            SOC 2 and a signed HIPAA Business Associate Agreement are in progress —
+            ask us for our current security documentation.
+          </p>
+        </Reveal>
+      </section>
+
       {/* Full-width photo band. Caption sits centered below the photo at
           every size, rather than overlaid on it, so it never covers the
           image and looks the same on phone and desktop. */}
@@ -406,9 +490,25 @@ export default function Welcome() {
       </Reveal>
 
       <footer className="border-t">
-        <div className="max-w-6xl mx-auto px-6 py-8 flex items-center justify-between text-[12px] text-muted-foreground">
-          <span>DualPay</span>
-          <Link to="/login" className="hover:text-foreground">Sign in</Link>
+        <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row sm:items-start justify-between gap-6 text-[12px] text-muted-foreground">
+          <div>
+            <span className="font-display font-semibold text-foreground">DualPay</span>
+            <div className="mt-2 space-y-0.5">
+              <div>Detroit, MI</div>
+              <div>
+                <a href="tel:+13138269096" className="hover:text-foreground">(313) 826-9096</a>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-6">
+            <a href="#security" className="hover:text-foreground">Security</a>
+            <Link to="/login" className="hover:text-foreground">Sign in</Link>
+          </div>
+        </div>
+        <div className="border-t">
+          <div className="max-w-6xl mx-auto px-6 py-4 text-[11px] text-muted-foreground/70">
+            © {new Date().getFullYear()} DualPay
+          </div>
         </div>
       </footer>
     </div>
