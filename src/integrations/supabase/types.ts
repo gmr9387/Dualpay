@@ -229,6 +229,62 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_invoices: {
+        Row: {
+          created_at: string
+          dispute_count: number
+          finalized_at: string | null
+          hosted_invoice_url: string | null
+          invoice_id: string
+          org_id: string
+          paid_at: string | null
+          period_end: string
+          period_start: string
+          status: string
+          stripe_invoice_id: string
+          subtotal_cents: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dispute_count?: number
+          finalized_at?: string | null
+          hosted_invoice_url?: string | null
+          invoice_id?: string
+          org_id: string
+          paid_at?: string | null
+          period_end: string
+          period_start: string
+          status?: string
+          stripe_invoice_id: string
+          subtotal_cents?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dispute_count?: number
+          finalized_at?: string | null
+          hosted_invoice_url?: string | null
+          invoice_id?: string
+          org_id?: string
+          paid_at?: string | null
+          period_end?: string
+          period_start?: string
+          status?: string
+          stripe_invoice_id?: string
+          subtotal_cents?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_invoices_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["org_id"]
+          },
+        ]
+      }
       case_claim_links: {
         Row: {
           case_id: string
@@ -1301,25 +1357,34 @@ export type Database = {
       }
       organizations: {
         Row: {
+          ach_connected_at: string | null
+          billing_email: string | null
           created_at: string
           name: string
           org_id: string
           org_type: string
           recovery_fee_percent_bps: number
+          stripe_customer_id: string | null
         }
         Insert: {
+          ach_connected_at?: string | null
+          billing_email?: string | null
           created_at?: string
           name: string
           org_id?: string
           org_type?: string
           recovery_fee_percent_bps?: number
+          stripe_customer_id?: string | null
         }
         Update: {
+          ach_connected_at?: string | null
+          billing_email?: string | null
           created_at?: string
           name?: string
           org_id?: string
           org_type?: string
           recovery_fee_percent_bps?: number
+          stripe_customer_id?: string | null
         }
         Relationships: []
       }
@@ -1880,6 +1945,7 @@ export type Database = {
         Row: {
           allowed_amount_cents: number
           assessed_fee_cents: number
+          billing_invoice_id: string | null
           claim_id: string
           client_response: string | null
           client_response_at: string | null
@@ -1910,6 +1976,7 @@ export type Database = {
         Insert: {
           allowed_amount_cents?: number
           assessed_fee_cents?: number
+          billing_invoice_id?: string | null
           claim_id: string
           client_response?: string | null
           client_response_at?: string | null
@@ -1940,6 +2007,7 @@ export type Database = {
         Update: {
           allowed_amount_cents?: number
           assessed_fee_cents?: number
+          billing_invoice_id?: string | null
           claim_id?: string
           client_response?: string | null
           client_response_at?: string | null
@@ -1968,6 +2036,13 @@ export type Database = {
           variance_percent?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "underpayment_disputes_billing_invoice_id_fkey"
+            columns: ["billing_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "billing_invoices"
+            referencedColumns: ["invoice_id"]
+          },
           {
             foreignKeyName: "underpayment_disputes_contract_id_fkey"
             columns: ["contract_id"]

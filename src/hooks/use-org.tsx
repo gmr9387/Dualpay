@@ -10,6 +10,8 @@ export interface Org {
   role: OrgRole;
   /** Contingency fee (basis points) assessed on a recovered underpayment dispute. 0 = unconfigured. */
   recovery_fee_percent_bps: number;
+  stripe_customer_id: string | null;
+  ach_connected_at: string | null;
 }
 
 interface OrgCtx {
@@ -40,7 +42,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     const { data, error } = await supabase
       .from('organization_members')
-      .select('role, org_id, organizations(name, org_id, recovery_fee_percent_bps)')
+      .select('role, org_id, organizations(name, org_id, recovery_fee_percent_bps, stripe_customer_id, ach_connected_at)')
       .eq('user_id', user.id);
     if (error) { console.error('[org] load failed', error.message); setLoading(false); return; }
     const list: Org[] = (data ?? []).map((r) => ({
@@ -48,6 +50,8 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       name: r.organizations?.name ?? 'Untitled Org',
       role: r.role as OrgRole,
       recovery_fee_percent_bps: r.organizations?.recovery_fee_percent_bps ?? 0,
+      stripe_customer_id: r.organizations?.stripe_customer_id ?? null,
+      ach_connected_at: r.organizations?.ach_connected_at ?? null,
     }));
     setOrgs(list);
     if (list.length > 0 && (!currentOrgId || !list.find(o => o.org_id === currentOrgId))) {
@@ -77,7 +81,12 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     if (mErr) { console.error('[org] membership failed', mErr.message); return null; }
     await refresh();
     selectOrg(org.org_id);
-    return { org_id: org.org_id, name: org.name, role: 'owner', recovery_fee_percent_bps: org.recovery_fee_percent_bps ?? 0 };
+    return {
+      org_id: org.org_id, name: org.name, role: 'owner',
+      recovery_fee_percent_bps: org.recovery_fee_percent_bps ?? 0,
+      stripe_customer_id: org.stripe_customer_id ?? null,
+      ach_connected_at: org.ach_connected_at ?? null,
+    };
   };
 
   const currentOrg = orgs.find(o => o.org_id === currentOrgId) ?? null;

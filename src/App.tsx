@@ -61,6 +61,7 @@ import ExecutiveValue from "./pages/ExecutiveValue";
 import AdminConsole from "./pages/AdminConsole";
 import AdminSecurity from "./pages/AdminSecurity";
 import AdminAudit from "./pages/AdminAudit";
+import AdminBilling from "./pages/AdminBilling";
 import ContractsHome from "./pages/ContractsHome";
 import ContractDetail from "./pages/ContractDetail";
 import ContractUpload from "./pages/ContractUpload";
@@ -147,6 +148,7 @@ const ProtectedShell = () => (
           <Route path="/admin" element={<AdminConsole />} />
           <Route path="/admin/security" element={<AdminSecurity />} />
           <Route path="/admin/audit" element={<AdminAudit />} />
+          <Route path="/admin/billing" element={<AdminBilling />} />
           <Route path="/contracts" element={<ContractsHome />} />
           <Route path="/contracts/upload" element={<ContractUpload />} />
           <Route path="/contracts/disputes" element={<ContractDisputes />} />
