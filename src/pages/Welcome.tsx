@@ -78,11 +78,17 @@ function SectionNumber({ children }: { children: ReactNode }) {
   );
 }
 
-/** Slightly tilts its child like a pinned magazine clipping, straightening on hover. */
-function Pinned({ children, tilt = '-rotate-2' }: { children: ReactNode; tilt?: string }) {
+/** Editorial layering: a thin offset frame sits behind the card, like a
+    matted photograph, giving it depth without a gimmicky tilt. Lifts
+    slightly on hover. */
+function Layered({ children, accent = 'gold' }: { children: ReactNode; accent?: 'gold' | 'primary' }) {
+  const frame = accent === 'gold' ? 'border-gold/50' : 'border-primary/30';
   return (
-    <div className={`${tilt} hover:rotate-0 transition-transform duration-300 ease-out shadow-2xl rounded-xl`}>
-      {children}
+    <div className="relative">
+      <div aria-hidden className={`absolute -bottom-3 -right-3 sm:-bottom-4 sm:-right-4 h-full w-full rounded-xl border-2 ${frame}`} />
+      <div className="relative rounded-xl shadow-2xl hover:-translate-y-1 transition-transform duration-300 ease-out">
+        {children}
+      </div>
     </div>
   );
 }
@@ -274,7 +280,7 @@ export default function Welcome() {
           </div>
         </Reveal>
         <Reveal delay={150}>
-          <Pinned tilt="-rotate-2">
+          <Layered accent="gold">
             <MockPanel>
               <MockCard>
                 <div className="bg-[hsl(150_45%_12%)] px-4 py-2.5 flex items-center justify-between">
@@ -289,7 +295,7 @@ export default function Welcome() {
                 </div>
               </MockCard>
             </MockPanel>
-          </Pinned>
+          </Layered>
         </Reveal>
       </section>
 
@@ -309,7 +315,7 @@ export default function Welcome() {
           </div>
         </Reveal>
         <Reveal className="md:order-1" delay={150}>
-          <Pinned tilt="rotate-2">
+          <Layered accent="primary">
             <MockPanel>
               <MockCard>
                 <div className="bg-[hsl(150_45%_12%)] px-4 py-2.5 flex items-center justify-between">
@@ -324,7 +330,7 @@ export default function Welcome() {
                 </div>
               </MockCard>
             </MockPanel>
-          </Pinned>
+          </Layered>
         </Reveal>
       </section>
 
@@ -345,7 +351,7 @@ export default function Welcome() {
           </div>
         </Reveal>
         <Reveal delay={150}>
-          <Pinned tilt="-rotate-1">
+          <Layered accent="gold">
             <MockPanel>
               <MockCard>
                 <div className="bg-[hsl(150_45%_12%)] px-4 py-2.5 flex items-center gap-2">
@@ -360,7 +366,7 @@ export default function Welcome() {
                 </div>
               </MockCard>
             </MockPanel>
-          </Pinned>
+          </Layered>
         </Reveal>
       </section>
 
