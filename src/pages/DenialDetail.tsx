@@ -5,7 +5,7 @@ import { PageHeader, Panel, SeverityBadge, StateBadge, OwnerChip, Recoverability
 import { CATEGORY_LABEL } from '@/engine/denial-intelligence';
 import { explainRecoverability } from '@/engine/recoverability';
 import { nextBestAction, URGENCY_CLS, URGENCY_LABEL } from '@/engine/next-action';
-import { ArrowLeft, AlertOctagon, FileText, CheckCircle2, Send, Loader2, Clock, TrendingUp, TrendingDown as TrendDownIcon, Sparkles, Zap, ClipboardList } from 'lucide-react';
+import { ArrowLeft, AlertOctagon, FileText, Send, Loader2, Clock, TrendingUp, TrendingDown as TrendDownIcon, Sparkles, Zap, ClipboardList } from 'lucide-react';
 
 export default function DenialDetail() {
   const { claimId } = useParams();
@@ -160,9 +160,9 @@ export default function DenialDetail() {
                 <Link to={`/recover?claim=${encodeURIComponent(claim.claim_id)}`} className="w-full h-8 px-2.5 rounded-md text-[12px] font-medium inline-flex items-center gap-2 border bg-card text-foreground hover:bg-muted">
                   <ClipboardList className="h-3.5 w-3.5" /> Track Recovery Case
                 </Link>
-                <ActionBtn icon={<FileText className="h-3.5 w-3.5" />} label="Attach Evidence" />
-                <ActionBtn icon={<CheckCircle2 className="h-3.5 w-3.5" />} label="Mark Resolved" />
-                <ActionBtn icon={<AlertOctagon className="h-3.5 w-3.5" />} label="Escalate" tone="danger" />
+                <Link to={`/vault/claim/${claim.claim_id}`} className="w-full h-8 px-2.5 rounded-md text-[12px] font-medium inline-flex items-center gap-2 border bg-card text-foreground hover:bg-muted">
+                  <FileText className="h-3.5 w-3.5" /> Attach Evidence
+                </Link>
               </div>
             </Panel>
 
@@ -235,17 +235,6 @@ function KV({ label, value, mono }: { label: string; value: string; mono?: boole
       <div className="text-[9.5px] uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className={`text-[12px] text-foreground ${mono ? 'font-mono' : ''} capitalize`}>{value}</div>
     </div>
-  );
-}
-function ActionBtn({ icon, label, tone }: { icon: React.ReactNode; label: string; tone?: 'primary' | 'danger' }) {
-  const cls =
-    tone === 'primary' ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-    : tone === 'danger' ? 'border bg-card text-status-denied hover:bg-status-denied/5'
-    : 'border bg-card text-foreground hover:bg-muted';
-  return (
-    <button className={`w-full h-8 px-2.5 rounded-md text-[12px] font-medium inline-flex items-center gap-2 transition-colors ${cls}`}>
-      {icon} {label}
-    </button>
   );
 }
 

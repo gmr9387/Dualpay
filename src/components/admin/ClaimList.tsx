@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { Claim, AdjudicationRun } from '@/types/claim';
 import type { TraceObject } from '@/types/trace';
-import { Search, Filter, ArrowDownUp, AlertTriangle, CheckCircle2, ArrowRightLeft, Clock, FileText } from 'lucide-react';
+import { Search, ArrowDownUp, AlertTriangle, CheckCircle2, ArrowRightLeft, Clock, FileText } from 'lucide-react';
 
 interface AdjResult {
   claimId: string;
@@ -45,9 +45,10 @@ const FILTERS = ['All', 'Pending', 'Paid', 'Denied', 'COB'] as const;
 export function ClaimList({ claims, adjResults, selectedClaimId, onSelect }: ClaimListProps) {
   const [filter, setFilter] = useState<typeof FILTERS[number]>('All');
   const [query, setQuery] = useState('');
+  const [sortDesc, setSortDesc] = useState(true);
 
   const filtered = useMemo(() => {
-    return claims.filter(c => {
+    const rows = claims.filter(c => {
       if (filter === 'Paid' && !['PAID', 'ADJUDICATED'].includes(c.status)) return false;
       if (filter === 'Denied' && c.status !== 'DENIED') return false;
       if (filter === 'COB' && c.ohi_indicators.length === 0) return false;
@@ -55,7 +56,11 @@ export function ClaimList({ claims, adjResults, selectedClaimId, onSelect }: Cla
       if (query && !`${c.claim_id} ${c.member_id} ${c.provider_name}`.toLowerCase().includes(query.toLowerCase())) return false;
       return true;
     });
-  }, [claims, filter, query]);
+    return [...rows].sort((a, b) => {
+      const cmp = a.service_date_from.localeCompare(b.service_date_from);
+      return sortDesc ? -cmp : cmp;
+    });
+  }, [claims, filter, query, sortDesc]);
 
   return (
     <div className="flex flex-col h-full bg-card">
@@ -89,10 +94,11 @@ export function ClaimList({ claims, adjResults, selectedClaimId, onSelect }: Cla
             </button>
           ))}
           <div className="ml-auto flex items-center gap-0.5">
-            <button className="h-7 w-7 rounded hover:bg-muted text-muted-foreground flex items-center justify-center">
-              <Filter className="h-3.5 w-3.5" />
-            </button>
-            <button className="h-7 w-7 rounded hover:bg-muted text-muted-foreground flex items-center justify-center">
+            <button
+              onClick={() => setSortDesc(v => !v)}
+              title={sortDesc ? 'Newest service date first' : 'Oldest service date first'}
+              className="h-7 w-7 rounded hover:bg-muted text-muted-foreground flex items-center justify-center"
+            >
               <ArrowDownUp className="h-3.5 w-3.5" />
             </button>
           </div>

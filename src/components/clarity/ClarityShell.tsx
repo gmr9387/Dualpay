@@ -3,12 +3,13 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, AlertOctagon, ListChecks, FileSearch, Gavel,
   TrendingDown, Building2, Upload, ScrollText, Shield, Search,
-  HelpCircle, Bell, Database, Activity, Target, FolderOpen, BarChart3,
+  HelpCircle, Database, Activity, Target, FolderOpen, BarChart3,
   BookOpen, GitBranch, TrendingUp, Users, FileCheck, BookText, ShieldCheck,
   Award, ClipboardList, Siren, Scale, Phone, Gauge, Factory, FileInput, History, AlertOctagon as AlertIcon,
   Bot, Settings2, Cpu, AlertTriangle, CreditCard,
 } from 'lucide-react';
 import { UserOrgMenu, NoOrgEmptyState } from '@/components/auth/UserOrgMenu';
+import { NotificationsMenu } from '@/components/clarity/NotificationsMenu';
 import { useOrg, type OrgRole } from '@/hooks/use-org';
 import { roleAtLeast } from '@/lib/role-permissions';
 
@@ -258,13 +259,16 @@ export function ClarityShell({ children, cloudOnline = true }: ClarityShellProps
             <span className="text-[10px] font-mono font-semibold tracking-wider px-2 py-0.5 rounded border border-status-pending/40 bg-status-pending/10 text-status-pending">
               PROD
             </span>
-            <button className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground">
+            <NavLink to="/admin" title="Admin Console — organization, security, and billing settings"
+              className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground">
+              <Settings2 className="h-4 w-4" />
+            </NavLink>
+            <a href="/welcome" target="_blank" rel="noopener noreferrer"
+              title="Help — product overview, how it works, security & compliance"
+              className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground">
               <HelpCircle className="h-4 w-4" />
-            </button>
-            <button className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground relative">
-              <Bell className="h-4 w-4" />
-              <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-status-denied" />
-            </button>
+            </a>
+            <NotificationsMenu />
             <UserOrgMenu />
           </div>
         </header>

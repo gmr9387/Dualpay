@@ -72,13 +72,23 @@ export function OrgProvider({ children }: { children: ReactNode }) {
 
   const createOrg = async (name: string): Promise<Org | null> => {
     if (!user) return null;
-    const { data: org, error } = await supabase
-      .from('organizations').insert({ name }).select('*').single();
-    if (error || !org) { console.error('[org] create failed', error?.message); return null; }
+    // Insert with a client-generated org_id and no .select() — the
+    // organizations SELECT policy requires org membership, which doesn't
+    // exist yet at insert time, so a chained .select().single() here gets
+    // zero rows back under RLS and throws. Insert the membership row first
+    // (satisfies the org_has_no_members bootstrap clause), then read the
+    // org back once membership actually exists.
+    const orgId = crypto.randomUUID();
+    const { error: orgErr } = await supabase
+      .from('organizations').insert({ org_id: orgId, name });
+    if (orgErr) { console.error('[org] create failed', orgErr.message); return null; }
     const { error: mErr } = await supabase
       .from('organization_members')
-      .insert({ org_id: org.org_id, user_id: user.id, role: 'owner' });
+      .insert({ org_id: orgId, user_id: user.id, role: 'owner' });
     if (mErr) { console.error('[org] membership failed', mErr.message); return null; }
+    const { data: org, error: fetchErr } = await supabase
+      .from('organizations').select('*').eq('org_id', orgId).single();
+    if (fetchErr || !org) { console.error('[org] fetch after create failed', fetchErr?.message); return null; }
     await refresh();
     selectOrg(org.org_id);
     return {

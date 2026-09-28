@@ -11,7 +11,7 @@ import { RunSummaryPanel } from './RunSummaryPanel';
 import { AuditReadinessPanel } from './AuditReadinessPanel';
 import { NucleusVerificationPanel } from './NucleusVerificationPanel';
 import { CaseLinkingPanel } from './CaseLinkingPanel';
-import { FileText, Layers, Network, Cpu, GitBranch, Briefcase, Printer, Download, MoreHorizontal, ArrowRight } from 'lucide-react';
+import { FileText, Layers, Network, Cpu, GitBranch, Briefcase, Printer, Download, ArrowRight } from 'lucide-react';
 
 interface AdjResult {
   claimId: string;
@@ -84,9 +84,8 @@ export function ClaimWorkspace(props: ClaimWorkspaceProps) {
             </div>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            <ToolbarBtn icon={Printer} label="Print EOB" />
-            <ToolbarBtn icon={Download} label="Export" />
-            <ToolbarBtn icon={MoreHorizontal} />
+            <ToolbarBtn icon={Printer} label="Print EOB" onClick={() => window.print()} />
+            <ToolbarBtn icon={Download} label="Export" onClick={() => exportClaimRecord(claim, result)} />
           </div>
         </div>
 
@@ -190,13 +189,34 @@ function Field({ label, value, mono }: { label: string; value: string; mono?: bo
   );
 }
 
-function ToolbarBtn({ icon: Icon, label }: { icon: typeof FileText; label?: string }) {
+function ToolbarBtn({ icon: Icon, label, onClick }: { icon: typeof FileText; label?: string; onClick?: () => void }) {
   return (
-    <button className="h-8 inline-flex items-center gap-1.5 px-2.5 rounded-md border bg-card hover:bg-muted text-[12px] text-foreground">
+    <button onClick={onClick} className="h-8 inline-flex items-center gap-1.5 px-2.5 rounded-md border bg-card hover:bg-muted text-[12px] text-foreground">
       <Icon className="h-3.5 w-3.5 text-muted-foreground" />
       {label && <span>{label}</span>}
     </button>
   );
+}
+
+/** Downloads the claim + its adjudication run/trace as a single JSON record --
+    a real, self-contained export (no backend round-trip needed) covering
+    exactly what's on screen: claim, payment waterfall, and trace. */
+function exportClaimRecord(claim: Claim, result: AdjResult) {
+  const payload = {
+    exported_at: new Date().toISOString(),
+    claim,
+    adjudication_run: result.run,
+    trace: result.trace,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${claim.claim_id}-adjudication.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 function Money({ label, value, tone, arrow }: { label: string; value: string; tone?: 'positive' | 'negative' | 'muted'; arrow?: boolean }) {
