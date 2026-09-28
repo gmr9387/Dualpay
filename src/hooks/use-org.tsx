@@ -14,20 +14,26 @@ export interface Org {
   ach_connected_at: string | null;
 }
 
+export interface CreateOrgResult {
+  org: Org | null;
+  /** Human-readable reason when org is null -- surfaced to the UI instead of only console.error'd. */
+  error: string | null;
+}
+
 interface OrgCtx {
   orgs: Org[];
   currentOrg: Org | null;
   loading: boolean;
   selectOrg: (id: string) => void;
   refresh: () => Promise<void>;
-  createOrg: (name: string) => Promise<Org | null>;
+  createOrg: (name: string) => Promise<CreateOrgResult>;
   setRecoveryFeePercent: (bps: number) => Promise<boolean>;
 }
 
 const STORAGE_KEY = 'clarity:current_org_id';
 const Ctx = createContext<OrgCtx>({
   orgs: [], currentOrg: null, loading: true,
-  selectOrg: () => {}, refresh: async () => {}, createOrg: async () => null,
+  selectOrg: () => {}, refresh: async () => {}, createOrg: async () => ({ org: null, error: 'Not initialized' }),
   setRecoveryFeePercent: async () => false,
 });
 
@@ -70,8 +76,8 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, id);
   };
 
-  const createOrg = async (name: string): Promise<Org | null> => {
-    if (!user) return null;
+  const createOrg = async (name: string): Promise<CreateOrgResult> => {
+    if (!user) return { org: null, error: 'Not signed in.' };
     // Insert with a client-generated org_id and no .select() — the
     // organizations SELECT policy requires org membership, which doesn't
     // exist yet at insert time, so a chained .select().single() here gets
@@ -81,21 +87,33 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     const orgId = crypto.randomUUID();
     const { error: orgErr } = await supabase
       .from('organizations').insert({ org_id: orgId, name });
-    if (orgErr) { console.error('[org] create failed', orgErr.message); return null; }
+    if (orgErr) {
+      console.error('[org] create failed', orgErr.message);
+      return { org: null, error: `Couldn't create organization: ${orgErr.message}` };
+    }
     const { error: mErr } = await supabase
       .from('organization_members')
       .insert({ org_id: orgId, user_id: user.id, role: 'owner' });
-    if (mErr) { console.error('[org] membership failed', mErr.message); return null; }
+    if (mErr) {
+      console.error('[org] membership failed', mErr.message);
+      return { org: null, error: `Organization created, but membership setup failed: ${mErr.message}` };
+    }
     const { data: org, error: fetchErr } = await supabase
       .from('organizations').select('*').eq('org_id', orgId).single();
-    if (fetchErr || !org) { console.error('[org] fetch after create failed', fetchErr?.message); return null; }
+    if (fetchErr || !org) {
+      console.error('[org] fetch after create failed', fetchErr?.message);
+      return { org: null, error: `Organization created, but couldn't load it back: ${fetchErr?.message ?? 'unknown error'}` };
+    }
     await refresh();
     selectOrg(org.org_id);
     return {
-      org_id: org.org_id, name: org.name, role: 'owner',
-      recovery_fee_percent_bps: org.recovery_fee_percent_bps ?? 0,
-      stripe_customer_id: org.stripe_customer_id ?? null,
-      ach_connected_at: org.ach_connected_at ?? null,
+      org: {
+        org_id: org.org_id, name: org.name, role: 'owner',
+        recovery_fee_percent_bps: org.recovery_fee_percent_bps ?? 0,
+        stripe_customer_id: org.stripe_customer_id ?? null,
+        ach_connected_at: org.ach_connected_at ?? null,
+      },
+      error: null,
     };
   };
 
