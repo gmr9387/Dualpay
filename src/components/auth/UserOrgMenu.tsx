@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { useOrg } from '@/hooks/use-org';
-import { User, LogOut, Building2, ChevronDown, Plus, Shield } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+import { User, LogOut, Building2, ChevronDown, Plus, Shield, AlertCircle } from 'lucide-react';
 
 export function UserOrgMenu() {
   const { user, signOut } = useAuth();
@@ -10,12 +11,19 @@ export function UserOrgMenu() {
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim()) return;
-    await createOrg(newName.trim());
-    setNewName(''); setCreating(false); setOpen(false);
+    setCreateError(null);
+    const { org, error } = await createOrg(newName.trim());
+    if (error) {
+      setCreateError(error);
+      toast({ title: 'Could not create organization', description: error, variant: 'destructive' });
+      return;
+    }
+    if (org) { setNewName(''); setCreating(false); setOpen(false); }
   };
 
   return (
@@ -53,11 +61,19 @@ export function UserOrgMenu() {
               <Plus className="h-3.5 w-3.5" /> New organization
             </button>
           ) : (
-            <form onSubmit={handleCreate} className="px-2 py-1.5 flex gap-1">
-              <input autoFocus value={newName} onChange={e => setNewName(e.target.value)}
-                placeholder="Org name"
-                className="flex-1 h-7 px-2 text-xs rounded border bg-background" />
-              <button type="submit" className="h-7 px-2 rounded bg-primary text-primary-foreground text-xs">Add</button>
+            <form onSubmit={handleCreate} className="px-2 py-1.5 space-y-1.5">
+              <div className="flex gap-1">
+                <input autoFocus value={newName} onChange={e => setNewName(e.target.value)}
+                  placeholder="Org name"
+                  className="flex-1 h-7 px-2 text-xs rounded border bg-background" />
+                <button type="submit" className="h-7 px-2 rounded bg-primary text-primary-foreground text-xs">Add</button>
+              </div>
+              {createError && (
+                <div className="flex items-start gap-1 rounded border border-destructive/30 bg-destructive/10 px-2 py-1.5 text-[10.5px] text-destructive">
+                  <AlertCircle className="h-3 w-3 shrink-0 mt-0.5" />
+                  <span>{createError}</span>
+                </div>
+              )}
             </form>
           )}
           <div className="border-t my-1.5" />
@@ -79,10 +95,13 @@ export function NoOrgEmptyState() {
   const { createOrg } = useOrg();
   const [name, setName] = useState('My Organization');
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
-    await createOrg(name.trim() || 'My Organization');
+    setError(null);
+    const { error: err } = await createOrg(name.trim() || 'My Organization');
+    if (err) setError(err);
     setBusy(false);
   };
   return (
@@ -97,6 +116,12 @@ export function NoOrgEmptyState() {
         </p>
         <input value={name} onChange={e => setName(e.target.value)}
           className="w-full h-9 px-3 rounded-md border bg-background text-sm" />
+        {error && (
+          <div className="flex items-start gap-1.5 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-[11.5px] text-destructive">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
         <button type="submit" disabled={busy}
           className="w-full h-9 rounded-md bg-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
           {busy ? 'Creating…' : 'Create organization'}
