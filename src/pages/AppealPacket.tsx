@@ -24,7 +24,7 @@ import {
   useAppealRecoveryCases, canTransitionTo, type AppealRecoveryCase, type AppealRecoveryState,
 } from '@/hooks/use-appeal-recovery-cases';
 import { appendOpsEvent } from '@/lib/ops-events';
-import { ArrowLeft, Loader2, CheckCircle2, AlertCircle, XCircle, FileText, Send, Inbox, Download, Info, ClipboardList } from 'lucide-react';
+import { ArrowLeft, Loader2, CheckCircle2, AlertCircle, XCircle, FileText, Send, Inbox, Download, Info, ClipboardList, ExternalLink } from 'lucide-react';
 
 export default function AppealPacket() {
   const { claimId } = useParams();
@@ -97,6 +97,7 @@ export default function AppealPacket() {
               <ClipboardList className="h-3.5 w-3.5" />
               {recoveryCase ? `Recovery Case · ${recoveryCase.current_state.replace(/_/g, ' ')}` : 'Recovery Case'}
             </Link>
+            {recoveryCase && <ServiceNowBadge recoveryCase={recoveryCase} />}
           </div>
         }
       />
@@ -372,6 +373,39 @@ function PacketPicker({ claims }: { claims: Array<{ claim_id: string; intel: { p
         </div>
       </ScrollBody>
     </div>
+  );
+}
+
+function ServiceNowBadge({ recoveryCase }: { recoveryCase: AppealRecoveryCase }) {
+  if (recoveryCase.servicenow_sync_status === 'pending') {
+    return (
+      <span className="h-8 px-3 inline-flex items-center gap-1.5 text-[11.5px] rounded-md border bg-muted/40 text-muted-foreground">
+        <Loader2 className="h-3 w-3 animate-spin" /> Syncing to ServiceNow…
+      </span>
+    );
+  }
+  if (recoveryCase.servicenow_sync_status === 'failed') {
+    return (
+      <span className="h-8 px-3 inline-flex items-center gap-1.5 text-[11.5px] rounded-md border border-status-denied/30 bg-status-denied/10 text-status-denied">
+        <AlertCircle className="h-3 w-3" /> ServiceNow sync failed
+      </span>
+    );
+  }
+  const instanceUrl = import.meta.env.VITE_SERVICENOW_INSTANCE_URL as string | undefined;
+  const label = `ServiceNow · ${recoveryCase.servicenow_number || recoveryCase.servicenow_sys_id}`;
+  if (instanceUrl && recoveryCase.servicenow_sys_id) {
+    const href = `${instanceUrl}/nav_to.do?uri=sn_customerservice_case.do?sys_id=${recoveryCase.servicenow_sys_id}`;
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer"
+        className="h-8 px-3 inline-flex items-center gap-1.5 text-[11.5px] rounded-md border bg-card hover:bg-muted text-foreground">
+        <ExternalLink className="h-3 w-3" /> {label}
+      </a>
+    );
+  }
+  return (
+    <span className="h-8 px-3 inline-flex items-center gap-1.5 text-[11.5px] rounded-md border bg-card text-foreground">
+      <CheckCircle2 className="h-3 w-3 text-status-paid" /> {label}
+    </span>
   );
 }
 
