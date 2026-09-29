@@ -32,6 +32,10 @@ export interface AppealRecoveryCase {
   glue_run_id: string | null;
   payer_response_status: string | null;
   recovered_amount_cents: number;
+  servicenow_sys_id: string | null;
+  servicenow_number: string | null;
+  servicenow_sync_status: 'pending' | 'synced' | 'failed';
+  servicenow_synced_at: string | null;
   created_at: string;
   updated_at: string;
 }

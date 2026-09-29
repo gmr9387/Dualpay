@@ -447,6 +447,7 @@ Storage isolation	Validation pending
 RLS	Validation pending
 RBAC	Validation pending
 Contingency-fee billing (Stripe, monthly ACH rollup)	Implemented (schema, cron dispatcher, sync-customer/webhook/rollup Edge Functions, admin billing UI all live) — dormant until `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` (Edge Function secrets) and the `dualpay_billing_service_role_key` Vault secret are set; every write path safely no-ops until then, mirroring valtaris-glue's dispatcher gate
+ServiceNow sync (bidirectional Case integration)	Implemented (schema, echo-loop-safe trigger dispatch + reconciliation sweep, `servicenow-sync`/`servicenow-webhook` Edge Functions, ServiceNow-side Scripted REST API/Business Rule/ATF artifacts all documented in `docs/SERVICENOW_INTEGRATION.md`) — dormant until `SERVICENOW_INSTANCE_URL`/`SERVICENOW_CLIENT_ID`/`SERVICENOW_CLIENT_SECRET`/`SERVICENOW_WEBHOOK_SECRET` (Edge Function secrets) and the `dualpay_servicenow_service_role_key` Vault secret are set; same dormant-until-configured gate as Stripe billing above
 Evidence lineage	Roadmap
 Appeal lineage	Roadmap
 Executive attribution	Roadmap
