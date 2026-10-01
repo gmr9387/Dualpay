@@ -553,6 +553,8 @@ telemetry
 
 database schema
 
+Engineering history — point-in-time phase reports and PR summaries, kept in [`docs/history/`](./docs/history/)
+
 Author
 George Rios
 
