@@ -25,8 +25,6 @@ Execution Model
 
 Risk Controls
 
-Trader Intelligence
-
 Data Architecture
 
 Security
@@ -295,10 +293,6 @@ assignment
 authorization
 
 persisted configuration
-
-Trader Intelligence
-DualPay does not include trader intelligence.
-This section is intentionally omitted for DualPay.
 
 Data Architecture
 DualPay's tables live in a dedicated `dualpay` Postgres schema inside `valtaris-nucleus-2`, a Supabase project shared with valtaris-nucleus and valtaris-glue. Each app's data stays isolated in its own schema (`dualpay`, `glue`, and nucleus's own `public`), while all three share one `auth.users` table — a single Supabase Auth identity is the common identity layer across the whole ecosystem, replacing what used to be a standalone, DualPay-only Supabase project. RLS policies, RPC functions, and triggers were carried over unchanged during the move; the Supabase client is configured with `db.schema: 'dualpay'` so unqualified table references keep resolving inside DualPay's own schema.
