@@ -6,7 +6,7 @@ DualPay Core Ledger is a reimbursement operations system designed to unify claim
 
 It is a portfolio engineering project and research implementation. It is not represented as HIPAA certified, SOC 2 certified, or commercially production deployed.
 
-**DualPay is the flagship product of the Valtaris portfolio.** Its adjudication compute now runs on `valtaris-nucleus`'s shared claims engine (see Data Architecture below and valtaris-nucleus's README §3.10), and its data lives in a Postgres schema shared with the rest of the ecosystem for a common identity layer. valtaris-nucleus and valtaris-glue are the supporting platform work behind it — nucleus is the backend DualPay's real adjudication path calls into; Glue is a separate, independently-real workflow-orchestration engine in the same portfolio, not (yet) wired into DualPay's own automation.
+**DualPay is the flagship product of the Valtaris portfolio.** Its adjudication compute now runs on [`valtaris-nucleus`](https://github.com/gmr9387/valtaris-nucleus)'s shared claims engine (see Data Architecture below and valtaris-nucleus's README §3.10), and its data lives in a Postgres schema — inside the shared `valtaris-nucleus-2` Supabase project — shared with the rest of the ecosystem for a common identity layer. valtaris-nucleus and [valtaris-glue](https://github.com/gmr9387/valtaris-glue) are the supporting platform work behind it — nucleus is the backend DualPay's real adjudication path calls into; Glue is a separate, independently-real workflow-orchestration engine in the same portfolio, not (yet) wired into DualPay's own automation. [decision-weaver-ai](https://github.com/gmr9387/decision-weaver-ai) is a fourth, standalone product in the same portfolio — same design lineage as the opportunity-scoring logic nucleus runs internally for DualPay's own claims, though the two are separate codebases rather than one calling the other.
 
 Table of Contents
 Overview
@@ -554,6 +554,14 @@ telemetry
 database schema
 
 Engineering history — point-in-time phase reports and PR summaries, kept in [`docs/history/`](./docs/history/)
+
+Related Repositories
+
+[valtaris-nucleus](https://github.com/gmr9387/valtaris-nucleus) — the shared adjudication backend this repo's real claim-pricing path calls
+
+[valtaris-glue](https://github.com/gmr9387/valtaris-glue) — sibling workflow-orchestration engine, sharing this repo's Supabase project (`valtaris-nucleus-2`) and identity layer
+
+[decision-weaver-ai](https://github.com/gmr9387/decision-weaver-ai) — standalone decision-intelligence product in the same portfolio
 
 Author
 George Rios
