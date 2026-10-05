@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="DualPay">
+  <title>DualPay</title>
+  <rect width="64" height="64" rx="14" fill="#1F4C37"/>
+  <!-- two sides of a reimbursement: provider and payer -->
+  <circle cx="26" cy="32" r="14" fill="#FFFFFF"/>
+  <circle cx="38" cy="32" r="14" fill="#7FD1A8"/>
+  <!-- reconciled overlap, marked with a ledger check -->
+  <path d="M32 21.8a14 14 0 0 1 0 20.4a14 14 0 0 1 0-20.4z" fill="#1F4C37"/>
+  <path d="M27.8 32.4l3 3l5.6-6.4" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
