@@ -6,6 +6,16 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 
+/**
+ * TEMPORARY, development only: build-time switch that skips the client-side
+ * MFA challenge and the admin/owner enrollment gate so a preview can be
+ * viewed without a TOTP device. Off unless VITE_DISABLE_MFA is exactly
+ * "true". Never set it on a production deployment, and unset it before
+ * release -- MFA is enforced again as soon as it is removed.
+ */
+export const MFA_DISABLED = import.meta.env.VITE_DISABLE_MFA === 'true';
+if (MFA_DISABLED) console.warn('[dualpay] VITE_DISABLE_MFA is set: client-side MFA checks are bypassed.');
+
 export interface AalStatus {
   currentLevel: 'aal1' | 'aal2' | null;
   nextLevel: 'aal1' | 'aal2' | null;

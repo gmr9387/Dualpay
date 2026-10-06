@@ -10,7 +10,7 @@
        Green and gold are accent colors, not fill colors: most of the UI
        stays neutral warm-white/charcoal, so the two brand colors read as
        deliberate rather than decorative. */
-    --background: 40 20% 98%;
+    --background: 0 0% 100%;
     --foreground: 150 15% 12%;
 
     --card: 0 0% 100%;
@@ -55,14 +55,14 @@
     --status-denied: 0 72% 45%;
     --status-pending: 28 85% 45%;
     --status-adjusted: 262 52% 47%;
-    --status-cob: 199 89% 38%;
+    --status-cob: 152 28% 34%;
 
     --positive: 145 58% 22%;
     --negative: 0 72% 45%;
     --neutral: 150 8% 40%;
 
     /* Surface elevation */
-    --surface-0: 40 20% 98%;
+    --surface-0: 0 0% 100%;
     --surface-1: 0 0% 100%;
     --surface-2: 40 15% 95%;
     --surface-3: 40 12% 91%;

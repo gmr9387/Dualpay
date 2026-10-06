@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { useOrg } from '@/hooks/use-org';
-import { listVerifiedTotpFactors } from '@/lib/mfa';
+import { MFA_DISABLED, listVerifiedTotpFactors } from '@/lib/mfa';
 import { MfaEnroll } from './MfaEnroll';
 import { Shield } from 'lucide-react';
 
@@ -18,6 +18,7 @@ export function EnforceMfaForElevatedRoles({ children }: { children: ReactNode }
 
   useEffect(() => {
     if (orgLoading) return;
+    if (MFA_DISABLED) { setStatus('ok'); return; }
     if (!currentOrg || !ELEVATED_ROLES.has(currentOrg.role)) { setStatus('ok'); return; }
     let cancelled = false;
     listVerifiedTotpFactors().then(factors => {
