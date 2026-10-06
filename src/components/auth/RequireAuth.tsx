@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
-import { MFA_DISABLED, getAal, listVerifiedTotpFactors } from '@/lib/mfa';
+import { getAal, listVerifiedTotpFactors } from '@/lib/mfa';
 import { MfaChallenge } from './MfaChallenge';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -15,7 +15,6 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function check() {
-      if (MFA_DISABLED) { if (!cancelled) setMfaState('clear'); return; }
       const aal = await getAal();
       if (aal.nextLevel === 'aal2' && aal.currentLevel !== 'aal2') {
         const factors = await listVerifiedTotpFactors();
