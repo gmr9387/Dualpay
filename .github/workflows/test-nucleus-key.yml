@@ -1,7 +1,9 @@
 name: Test Nucleus API Key
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - test/nucleus-key-check
 
 jobs:
   check:
