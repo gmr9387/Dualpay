@@ -1,0 +1,24 @@
+name: Test Nucleus API Key
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call nucleus-adjudicate proxy
+        run: |
+          curl -sS -X POST "https://qrqekucwdfyqqzomuble.supabase.co/functions/v1/nucleus-adjudicate" \
+            -H "Authorization: Bearer ${ANON_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "claim_id": "test-wiring-check-001",
+              "member_id": "test-member",
+              "payer_name": "Test Payer",
+              "procedure_code": "99213",
+              "billed_amount_cents": 10000
+            }' \
+            -w "\nHTTP_STATUS:%{http_code}\n"
+        env:
+          ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFycWVrdWN3ZGZ5cXF6b211YmxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNzgwMTgsImV4cCI6MjEwNTY1NDAxOH0.rrTeUKRTaA3UUfh3f_isWEYw1zjlVX9nBQ1MW2UbZVQ
