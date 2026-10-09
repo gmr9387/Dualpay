@@ -26,7 +26,7 @@
     --secondary-foreground: 150 15% 20%;
 
     --muted: 40 15% 95%;
-    --muted-foreground: 150 8% 40%;
+    --muted-foreground: 150 10% 28%;
 
     --accent: 152 30% 94%;
     --accent-foreground: 152 45% 20%;
@@ -39,8 +39,8 @@
     --destructive: 0 65% 42%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 40 12% 88%;
-    --input: 40 12% 88%;
+    --border: 40 12% 76%;
+    --input: 40 12% 76%;
     --ring: 152 42% 30%;
 
     --radius: 0.5rem;
@@ -59,7 +59,7 @@
 
     --positive: 145 58% 22%;
     --negative: 0 72% 45%;
-    --neutral: 150 8% 40%;
+    --neutral: 150 10% 28%;
 
     /* Surface elevation */
     --surface-0: 0 0% 100%;
@@ -76,7 +76,7 @@
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 152 30% 94%;
     --sidebar-accent-foreground: 152 45% 18%;
-    --sidebar-border: 40 12% 90%;
+    --sidebar-border: 40 12% 78%;
     --sidebar-ring: 152 42% 30%;
 
     --font-sans: 'Inter', system-ui, -apple-system, sans-serif;

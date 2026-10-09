@@ -182,7 +182,7 @@ export function ClarityShell({ children, cloudOnline = true }: ClarityShellProps
         <nav className="flex-1 px-2 py-2 space-y-3 overflow-y-auto">
           {visibleSections.map(section => (
             <div key={section.title}>
-              <div className="px-2 pb-1 text-[9.5px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">
+              <div className="px-2 pb-1 text-[9.5px] font-semibold uppercase tracking-wider text-sidebar-foreground/65">
                 {section.title}
               </div>
               <div className="space-y-0.5">
