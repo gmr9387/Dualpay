@@ -26,14 +26,14 @@
     --secondary-foreground: 150 15% 20%;
 
     --muted: 40 15% 95%;
-    --muted-foreground: 150 10% 28%;
+    --muted-foreground: 150 14% 22%;
 
     --accent: 152 30% 94%;
     --accent-foreground: 152 45% 20%;
 
     /* Gold: reserved for deliberate highlights (badges, active-state
        accents) -- never a fill color, never a status color. */
-    --gold: 42 55% 45%;
+    --gold: 40 75% 40%;
     --gold-foreground: 35 40% 14%;
 
     --destructive: 0 65% 42%;
@@ -59,7 +59,7 @@
 
     --positive: 145 58% 22%;
     --negative: 0 72% 45%;
-    --neutral: 150 10% 28%;
+    --neutral: 150 14% 22%;
 
     /* Surface elevation */
     --surface-0: 0 0% 100%;

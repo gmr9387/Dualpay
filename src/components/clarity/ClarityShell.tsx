@@ -204,7 +204,7 @@ export function ClarityShell({ children, cloudOnline = true }: ClarityShellProps
                       <Icon className="h-3.5 w-3.5 shrink-0" />
                       <span className="flex-1 text-left truncate">{item.label}</span>
                       {item.badge && (
-                        <span className="text-[8.5px] font-mono font-semibold tracking-wider px-1 py-0.5 rounded bg-gold/15 text-gold border border-gold/30">
+                        <span className="text-[8.5px] font-mono font-bold tracking-wider px-1.5 py-0.5 rounded bg-gold text-gold-foreground border border-gold/80">
                           {item.badge}
                         </span>
                       )}
@@ -256,7 +256,7 @@ export function ClarityShell({ children, cloudOnline = true }: ClarityShellProps
           </div>
 
           <div className="ml-auto flex items-center gap-2">
-            <span className="text-[10px] font-mono font-semibold tracking-wider px-2 py-0.5 rounded border border-status-pending/40 bg-status-pending/10 text-status-pending">
+            <span className="text-[10px] font-mono font-bold tracking-wider px-2 py-0.5 rounded border border-status-pending bg-status-pending text-white">
               PROD
             </span>
             <NavLink to="/admin" title="Admin Console — organization, security, and billing settings"
