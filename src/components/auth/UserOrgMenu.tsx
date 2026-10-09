@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { useOrg } from '@/hooks/use-org';
 import { toast } from '@/hooks/use-toast';
-import { User, LogOut, Building2, ChevronDown, Plus, Shield, AlertCircle } from 'lucide-react';
+import { uploadAvatar } from '@/lib/avatar';
+import { User, LogOut, Building2, ChevronDown, Plus, Shield, AlertCircle, Camera } from 'lucide-react';
 
 export function UserOrgMenu() {
   const { user, signOut } = useAuth();
@@ -12,6 +13,21 @@ export function UserOrgMenu() {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [createError, setCreateError] = useState<string | null>(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file later
+    if (!file || !user) return;
+    setAvatarBusy(true);
+    const { error } = await uploadAvatar(user.id, file);
+    setAvatarBusy(false);
+    if (error) {
+      toast({ title: 'Could not update profile picture', description: error, variant: 'destructive' });
+    }
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,11 +43,32 @@ export function UserOrgMenu() {
   };
 
   return (
-    <div className="relative">
-      <button onClick={() => setOpen(v => !v)} className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-muted">
-        <div className="h-7 w-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+    <div className="relative flex items-center gap-1.5">
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={avatarBusy}
+        title="Change profile picture"
+        className="group relative h-7 w-7 shrink-0 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center overflow-hidden disabled:opacity-60"
+      >
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+        ) : (
           <User className="h-3.5 w-3.5 text-primary" />
-        </div>
+        )}
+        <span className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Camera className="h-3 w-3 text-white" />
+        </span>
+      </button>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={handleAvatarChange}
+      />
+
+      <button onClick={() => setOpen(v => !v)} className="flex items-center gap-1 px-1.5 py-1 rounded-md hover:bg-muted">
         <div className="text-left leading-tight hidden md:block">
           <div className="text-[11px] font-semibold truncate max-w-[140px]">{currentOrg?.name ?? 'No org'}</div>
           <div className="text-[9.5px] text-muted-foreground font-mono truncate max-w-[140px]">{user?.email}</div>
