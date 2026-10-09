@@ -7,7 +7,6 @@ import { ClarityShell } from "@/components/clarity/ClarityShell";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { OrgProvider } from "@/hooks/use-org";
 import { RequireAuth } from "@/components/auth/RequireAuth";
-import { EnforceMfaForElevatedRoles } from "@/components/auth/EnforceMfaForElevatedRoles";
 import AccountSecurity from "./pages/AccountSecurity";
 import Login from "./pages/Login";
 import Welcome from "./pages/Welcome";
@@ -93,7 +92,6 @@ const queryClient = new QueryClient();
 const ProtectedShell = () => (
   <RequireAuth>
     <OrgProvider>
-      <EnforceMfaForElevatedRoles>
       <ClarityShell>
         <Routes>
           <Route path="/" element={<CommandCenter />} />
@@ -177,7 +175,6 @@ const ProtectedShell = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
       </ClarityShell>
-      </EnforceMfaForElevatedRoles>
     </OrgProvider>
   </RequireAuth>
 );
