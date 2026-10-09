@@ -1,0 +1,16 @@
+name: Test Avatar Public URL
+
+on:
+  push:
+    branches:
+      - test/avatar-url-check
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch avatar public URL headers
+        run: |
+          curl -sS -D - -o /dev/null \
+            "https://qrqekucwdfyqqzomuble.supabase.co/storage/v1/object/public/avatars/565d4421-0220-4b15-b426-00fc062213c0/avatar.jpg" \
+            -w "\nHTTP_STATUS:%{http_code}\n"
