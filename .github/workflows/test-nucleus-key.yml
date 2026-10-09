@@ -24,3 +24,21 @@ jobs:
             -w "\nHTTP_STATUS:%{http_code}\n"
         env:
           ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFycWVrdWN3ZGZ5cXF6b211YmxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNzgwMTgsImV4cCI6MjEwNTY1NDAxOH0.rrTeUKRTaA3UUfh3f_isWEYw1zjlVX9nBQ1MW2UbZVQ
+
+      - name: Call nucleus-weaver-score proxy
+        run: |
+          curl -sS -X POST "https://qrqekucwdfyqqzomuble.supabase.co/functions/v1/nucleus-weaver-score" \
+            -H "Authorization: Bearer ${ANON_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '{"stage":"opportunity","claim_id":"test-wiring-check-001","facts":{}}' \
+            -w "\nHTTP_STATUS:%{http_code}\n"
+        env:
+          ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFycWVrdWN3ZGZ5cXF6b211YmxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNzgwMTgsImV4cCI6MjEwNTY1NDAxOH0.rrTeUKRTaA3UUfh3f_isWEYw1zjlVX9nBQ1MW2UbZVQ
+
+      - name: Call nucleus-guardian-status proxy
+        run: |
+          curl -sS -X GET "https://qrqekucwdfyqqzomuble.supabase.co/functions/v1/nucleus-guardian-status" \
+            -H "Authorization: Bearer ${ANON_KEY}" \
+            -w "\nHTTP_STATUS:%{http_code}\n"
+        env:
+          ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFycWVrdWN3ZGZ5cXF6b211YmxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNzgwMTgsImV4cCI6MjEwNTY1NDAxOH0.rrTeUKRTaA3UUfh3f_isWEYw1zjlVX9nBQ1MW2UbZVQ
